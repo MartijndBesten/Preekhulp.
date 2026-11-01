@@ -255,6 +255,7 @@ export function naarMarkdown(x: Dossier): string {
   md.push(...bw("vergelijking").map((b) => beweringMd(b, x)), "");
 
   md.push(`## 8. Preken en lezingen`);
+  for (const v of x.c?.videos ?? []) md.push(`- Video uit de vraag <${v.url}>: ${v.transcript ? `transcript “${v.transcript}” (${v.labels.length} delen). ` : ""}${v.melding}`);
   const video = x.bronnen.filter((b) => b.brontype === "preek/lezing (video)");
   if (!video.length) md.push(`_Geen video's met gegevens (YouTube-sleutel ontbreekt of geen resultaten)._`);
   for (const b of video) md.push(`- ${b.titel} — ${b.auteurs.join(", ")} (${b.jaar ?? "?"}) <${b.url}> — **${b.toegang === "transcript" ? "transcript beschikbaar" : "alleen metadata; inhoud niet geverifieerd"}**`);

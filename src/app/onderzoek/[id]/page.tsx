@@ -186,6 +186,7 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
 
           <section id="preken" className="kaart">
             <h2>8. Preken en lezingen</h2>
+            {x.c?.videos?.map((v: X) => <div key={v.videoId} className={v.transcript ? "melding info" : "melding"}><a href={v.url} target="_blank" rel="noreferrer">Video uit je vraag ({v.videoId})</a>: {v.transcript ? <><b>{v.transcript}</b> — {v.labels.length} transcriptdelen in het bewijsregister. </> : null}{v.melding}</div>)}
             {x.bronnen.filter((b: X) => b.brontype === "preek/lezing (video)").map((b: X) => <div key={b.id} className="bewering"><a href={b.url} target="_blank" rel="noreferrer">{b.titel}</a> — {b.auteurs.join(", ")} ({b.jaar ?? "?"}) <span className="label n-niet_geverifieerd">{b.toegang === "transcript" ? "transcript" : "alleen metadata — inhoud niet geverifieerd"}</span></div>)}
             {x.bewijs.filter((r: X) => r.soort === "transcript").map((r: X) => <div key={r.label} className="citaat">[{r.label}] {r.locatie}{r.url && <> — <a href={r.url} target="_blank" rel="noreferrer">open op dit tijdstip</a></>}{"\n"}{r.tekst.slice(0, 400)}</div>)}
             <p className="zacht-tekst">Zonder YouTube-sleutel of aangeleverd transcript worden geen video-inhouden geanalyseerd. {x.b?.doorverwijzingen.filter((l: X) => l.bron === "YouTube").map((l: X) => <a key={l.url} href={l.url} target="_blank" rel="noreferrer" style={{ marginRight: 8 }}>{l.label}</a>)}</p>

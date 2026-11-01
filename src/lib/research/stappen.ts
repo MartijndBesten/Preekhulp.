@@ -12,7 +12,7 @@ import { ontdubbel, ontleedVerwijzing, vindVerwijzingenInTekst, grenzen, type Bi
 import { ontleedVkey, vkey } from "../scripture/books";
 import { actieveConnectors } from "../sources/registry";
 import { verwijzingenVoorRef, verwijzingenVoorZoekterm } from "../sources/connectors/verwijzingen";
-import { youtubeZoeklink } from "../videos/youtube";
+import { GEEN_TRANSCRIPT, tijdLink, tijdLabel, videoIdsInTekst, youtubeZoeklink } from "../videos/youtube";
 import type { BronRecord, Zoekvraag } from "../sources/types";
 import { controleer, type Niveau, type Verwijzing as VerwijzingT } from "../verification/claims";
 import { ANALYSE_BRON, bewijsMap, bewijsRijen, registreer, type BewijsRij } from "./bewijs";
@@ -205,6 +205,7 @@ export interface UitvoerC {
   connectors: { id: string; naam: string; status: ConnectorStatusC; resultaten: number; melding: string | null }[];
   externeBronnen: string[]; // bron-id's
   dataBeweringen: { tekst: string; labels: string[] }[];
+  videos?: { videoId: string; url: string; transcript: string | null; transcriptSoort: string | null; labels: string[]; melding: string }[];
 }
 
 export async function stapC(c: RunCtx, a: UitvoerA, b: UitvoerB): Promise<UitvoerC> {
@@ -369,6 +370,23 @@ export async function stapC(c: RunCtx, a: UitvoerA, b: UitvoerB): Promise<Uitvoe
   }
 
   uit.externeBronnen = (d.prepare("SELECT DISTINCT b.id FROM onderzoek_bronnen ob JOIN bronnen b ON b.id = ob.bron WHERE ob.onderzoek = ? AND b.connector NOT IN ('lokaal-bijbel','lokaal-grondtekst','lokaal-commentaren','analyse','eigen-documenten')").all(id) as { id: string }[]).map((r) => r.id);
+  // YouTube-links in de onderzoeksvraag: alleen met een eigen, rechtmatig transcript inhoudelijk gebruiken.
+  uit.videos = [];
+  for (const vid of videoIdsInTekst(c.vraag).slice(0, 5)) {
+    const url = `https://www.youtube.com/watch?v=${vid}`;
+    const doc = d.prepare("SELECT id, titel, auteur, jaar, transcript_soort FROM documenten WHERE video_id = ? ORDER BY gemaakt DESC").get(vid) as { id: string; titel: string; auteur: string | null; jaar: string | null; transcript_soort: string | null } | undefined;
+    if (!doc) {
+      uit.videos.push({ videoId: vid, url, transcript: null, transcriptSoort: null, labels: [], melding: GEEN_TRANSCRIPT });
+      continue;
+    }
+    const delen = d.prepare("SELECT locatie, start_sec, eind_sec, tekst FROM document_delen WHERE document = ? ORDER BY volgorde LIMIT 60").all(doc.id) as { locatie: string; start_sec: number | null; eind_sec: number | null; tekst: string }[];
+    const record: BronRecord = { connector: "eigen-documenten", extern_id: doc.id, brontype: "preek/lezing (video)", titel: doc.titel, auteurs: doc.auteur ? [doc.auteur] : [], jaar: doc.jaar, url, toegang: "transcript", rechten: { vindbaar: "nee", leesbaar: "ja", downloadbaar: "nee", herbruikbaar: "onbekend", toelichting: "Door de gebruiker aangeleverd transcript" } };
+    const labels = delen.map((p) => registreer(d, id, record, { soort: "transcript", locatie: p.start_sec != null ? `${tijdLabel(p.start_sec)}${p.eind_sec != null ? `–${tijdLabel(p.eind_sec)}` : ""}` : p.locatie, tekst: p.tekst, url: p.start_sec != null ? tijdLink(vid, p.start_sec) : url, start_sec: p.start_sec, eind_sec: p.eind_sec }, `video:${vid}`));
+    uit.videos.push({
+      videoId: vid, url, transcript: doc.titel, transcriptSoort: doc.transcript_soort, labels,
+      melding: doc.transcript_soort === "automatisch" ? "Automatisch gegenereerd transcript: woorden kunnen verkeerd zijn herkend. Controleer een citaat in de video (tijdlink) voordat je het gebruikt." : `Transcript uit je bibliotheek (${doc.transcript_soort ?? "soort onbekend"}).`,
+    });
+  }
   return uit;
 }
 

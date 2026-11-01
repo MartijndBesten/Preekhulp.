@@ -103,3 +103,12 @@ function decodeHtml(s: string): string {
 export function youtubeZoeklink(q: string): string {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
 }
+
+/** Alle YouTube-video's die in een tekst (bv. de onderzoeksvraag) als link voorkomen. */
+export function videoIdsInTekst(tekst: string): string[] {
+  const urls = tekst.match(/https?:\/\/(?:www\.|m\.|music\.)?(?:youtube(?:-nocookie)?\.com|youtu\.be)\/[^\s)>\]"']+/gi) ?? [];
+  return [...new Set(urls.map((u) => videoIdUitUrl(u)).filter((x): x is string => !!x))];
+}
+
+export const GEEN_TRANSCRIPT =
+  "Geen transcript van deze video in je bibliotheek. Preekhulp doet daarom geen uitspraken over de inhoud, citaten of tijdstippen van deze video. Voeg een rechtmatig verkregen transcript (SRT/VTT/TXT) toe via Eigen bibliotheek, met deze YouTube-link erbij.";

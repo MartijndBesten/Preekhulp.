@@ -30,6 +30,27 @@ t("Onderzoeksworkflow (Genesis 31:13)", () => {
     expect(x.beweringen.filter((b) => b.niveau === "direct_aangetoond").every((b) => b.verwijzingen.length > 0)).toBe(true);
   }, 60_000);
 
+  it("YouTube-link in de vraag: met transcript tijdlinks als bewijs, zonder transcript geen inhoudelijke uitspraken", async () => {
+    const { maakOnderzoek, voerUit } = await import("../src/lib/research/runner");
+    const { laadDossier, naarMarkdown } = await import("../src/lib/reports/dossier");
+    const { importeerDocument } = await import("../src/lib/documents/import");
+    const srt = "1\n00:02:05,000 --> 00:02:09,000\nIk ben de God van Betel, zegt de HEERE.\n";
+    await importeerDocument(d, "preek.srt", Buffer.from(srt), { titel: "Testpreek Betel", videoUrl: "https://youtu.be/AAAAAAAAAAA", transcriptSoort: "automatisch" });
+    const id = maakOnderzoek(d, "Genesis 31:13. Vergelijk https://youtu.be/AAAAAAAAAAA en https://www.youtube.com/watch?v=BBBBBBBBBBB", "verkennen", { zonderExtern: true }, null);
+    await voerUit(d, id);
+    const x = laadDossier(d, id)!;
+    const [met, zonder] = x.c!.videos!;
+    expect(met.transcript).toBe("Testpreek Betel");
+    expect(met.melding).toMatch(/Automatisch gegenereerd/);
+    const r = x.bewijs.find((b) => b.label === met.labels[0])!;
+    expect(r.url).toBe("https://www.youtube.com/watch?v=AAAAAAAAAAA&t=125s");
+    expect(r.locatie).toBe("2:05–2:09");
+    expect(zonder.transcript).toBeNull();
+    expect(zonder.labels).toEqual([]);
+    expect(x.bewijs.some((b) => b.url?.includes("BBBBBBBBBBB"))).toBe(false);
+    expect(naarMarkdown(x)).toContain("geen uitspraken over de inhoud, citaten of tijdstippen");
+  }, 60_000);
+
   it("met (nep-)AI: niet-bestaande verwijzingen en niet-teruggevonden citaten worden gecorrigeerd", async () => {
     const ai = await import("../src/lib/ai");
     const { bewaarInstellingen } = await import("../src/lib/settings");
