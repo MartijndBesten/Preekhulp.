@@ -72,6 +72,16 @@ t("Onderzoeksworkflow (Genesis 31:13)", () => {
       expect(x.beweringen.find((b) => b.tekst === "Verdieping met verzonnen bron")?.niveau).toBe("niet_geverifieerd");
       // Statusladder: wat naar de AI ging, is gemarkeerd
       expect(x.bewijs.some((r) => r.naar_ai === 1)).toBe(true);
+      expect(x.bronnen.some((b) => b.ladder.niveau >= 5)).toBe(true);
+      expect(x.bronnen.every((b) => b.toegang === "volledige tekst" || b.toegang === "transcript" || b.ladder.niveau <= 3)).toBe(true);
+      // Claim-bronmatrix: alleen AI-beweringen; verzonnen verwijzing staat er zonder bewijs in
+      expect(x.matrix.length).toBe(x.beweringen.filter((b) => b.herkomst === "ai").length);
+      expect(x.matrix.find((m) => m.tekst === "Verzonnen bron")?.bewijs).toEqual([]);
+      const { naarMarkdown } = await import("../src/lib/reports/dossier");
+      const md = naarMarkdown(x);
+      expect(md).toContain("### Claim-bronmatrix");
+      expect(md).toContain("Dat zegt níet dat de uitleg juist is");
+      expect(md).toContain("### Verdiepingsronde");
     } finally {
       ai.zetNepAanbieder(null);
       bewaarInstellingen(d, { aiAanbieder: "geen" });

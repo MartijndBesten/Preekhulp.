@@ -12,6 +12,7 @@ const SECTIES = [
   ["historisch", "5. Historische commentaren"], ["hedendaags", "6. Hedendaagse uitleg"], ["perspectieven", "7. Theologische perspectieven"], ["preken", "8. Preken en lezingen"],
   ["lijnen", "9. Nieuwe onderzoekslijnen"], ["kritisch", "10. Kritische aandachtspunten"], ["homiletiek", "11. Homiletische verbindingen"], ["vervolg", "12. Vervolgvragen"], ["bronnen", "13. Bronnen"],
 ] as const;
+const MATRIX_WAARSCHUWING = "Automatische controle vergelijkt tekst: bestaat het bewijsstuk, staat het citaat er letterlijk in, is het een primaire bron. Dat zegt níet dat de uitleg juist is. De steuncontrole is een AI-oordeel en kan een bewering alleen afwaarderen. Lees bij twijfel de bron zelf.";
 const MARKERINGEN = ["relevant", "later lezen", "kritisch perspectief", "gebruikt", "niet relevant"];
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -82,6 +83,7 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
         {b.controle?.onbekend?.length > 0 && <> · <i>niet-bestaande verwijzingen verwijderd: {b.controle.onbekend.join(", ")}</i></>}
         {b.controle?.citatenNietGevonden?.length > 0 && <> · <i>citaat niet teruggevonden, weggelaten</i></>}
         {b.controle?.alleenAbstractOfMetadata && <> · <i>alleen abstract/catalogus</i></>}
+        {b.controle?.steuncontrole && b.controle.steuncontrole.oordeel !== "ondersteunt" && <> · <i>tegenlezer: {b.controle.steuncontrole.oordeel.replace(/_/g, " ")}</i></>}
       </div>
       {b.verwijzingen.filter((r: X) => r.citaat).map((r: X) => <div className="citaat" key={r.label}>“{r.citaat}” — {r.label}</div>)}
       {b.verwijzingen.some((r: X) => r.label === open) && <BewijsPaneel r={bewijs.get(open!)} />}
@@ -189,7 +191,19 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
             <p className="zacht-tekst">Zonder YouTube-sleutel of aangeleverd transcript worden geen video-inhouden geanalyseerd. {x.b?.doorverwijzingen.filter((l: X) => l.bron === "YouTube").map((l: X) => <a key={l.url} href={l.url} target="_blank" rel="noreferrer" style={{ marginRight: 8 }}>{l.label}</a>)}</p>
           </section>
 
-          <section id="lijnen" className="kaart"><h2>9. Nieuwe of onverwachte onderzoekslijnen</h2>{bw("lijnen").map((b: X) => <Bewering key={b.id} b={b} />)}<Verdiep stap="F" tekst="Lijnen opnieuw formuleren" /></section>
+          <section id="lijnen" className="kaart">
+            <h2>9. Nieuwe of onverwachte onderzoekslijnen</h2>
+            {bw("lijnen").map((b: X) => <Bewering key={b.id} b={b} />)}
+            <Verdiep stap="F" tekst="Lijnen opnieuw formuleren" />
+            {x.v?.onderwerpen?.length > 0 && <>
+              <h3>Verdiepingsronde</h3>
+              <p className="zacht-tekst">Een tweede, gerichte zoekronde op onderwerpen die tijdens het onderzoek opvielen: de verzen zelf, kruisverwijzingen (ook naar latere hoofdstukken), historische uitleg en — binnen het zoekbudget — academische treffers.</p>
+              {x.v.onderwerpen.map((o: X) => <div key={o.titel} className="bewering"><b>{o.titel}</b> <span className="zacht-tekst">({o.herkomst === "ai" ? "voorgesteld door de analyse" : "datagedreven"})</span><div className="meta">{o.waarom} · bewijs: {o.labels.length ? <Refs v={o.labels.slice(0, 14).map((l: string) => ({ label: l }))} /> : "geen"}</div>{o.labels.includes(open) && <BewijsPaneel r={bewijs.get(open!)} />}</div>)}
+              {x.v.ai?.onderwerpen?.filter((o: X) => o.wat_de_tekst_niet_zegt.length).map((o: X) => <div key={o.onderwerp} className="melding info"><b>Wat de tekst níet zegt ({o.onderwerp}):</b> {o.wat_de_tekst_niet_zegt.join("; ")}</div>)}
+              {x.v.aiFout && <p className="zacht-tekst">{x.v.aiFout}</p>}
+              {bw("verdieping").map((b: X) => <Bewering key={b.id} b={b} />)}
+            </>}
+          </section>
 
           <section id="kritisch" className="kaart">
             <h2>10. Kritische aandachtspunten</h2>
@@ -198,6 +212,21 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
             {x.g?.ai?.eindoordeel && <p><b>Eindoordeel tegenlezing:</b> {x.g.ai.eindoordeel}</p>}
             {x.g?.aiFout && <div className="melding">{x.g.aiFout}</div>}
             <Verdiep stap="G" tekst="Tegenlezing opnieuw" />
+            {x.matrix?.length > 0 && <details style={{ marginTop: 12 }}>
+              <summary><b>Claim-bronmatrix</b> ({x.matrix.length} AI-beweringen)</summary>
+              <div className="melding">{MATRIX_WAARSCHUWING}</div>
+              <div style={{ overflowX: "auto" }}><table><thead><tr><th>Claim</th><th>Niveau</th><th>Bewijs</th><th>Interpretatieve stap</th><th>Tegenargumenten</th><th>Onzekerheid</th><th>Steuncontrole</th></tr></thead><tbody>
+                {x.matrix.map((r: X) => <tr key={r.claim}>
+                  <td><b>{r.claim}</b> {r.tekst}</td>
+                  <td><span className={`label n-${r.niveau}`}>{NIVEAU[r.niveau]}</span>{r.aanpassing && <div className="zacht-tekst">{r.aanpassing}</div>}</td>
+                  <td>{r.bewijs.length ? r.bewijs.map((b: X) => <div key={b.label}><button className="ref" onClick={() => setOpen(open === b.label ? null : b.label)}>{b.label}</button> {b.bron.split(" — ")[0]}, {b.locatie}{b.citaatGeverifieerd && <span className="zacht-tekst"> · citaat teruggevonden</span>}</div>) : <span className="zacht-tekst">geen</span>}</td>
+                  <td className="zacht-tekst">{r.interpretatieveStap ?? "–"}</td>
+                  <td>{r.tegenverwijzingen.length ? r.tegenverwijzingen.map((t: X) => <div key={t.label}><button className="ref" onClick={() => setOpen(open === t.label ? null : t.label)}>{t.label}</button> {t.locatie}</div>) : <span className="zacht-tekst">niet gevonden</span>}</td>
+                  <td className="zacht-tekst">{r.onzekerheid ?? "–"}</td>
+                  <td className="zacht-tekst">{r.steuncontrole ? `${r.steuncontrole.oordeel.replace(/_/g, " ")}: ${r.steuncontrole.toelichting}` : "–"}</td>
+                </tr>)}
+              </tbody></table></div>
+            </details>}
           </section>
 
           <section id="homiletiek" className="kaart"><h2>11. Mogelijke homiletische verbindingen</h2><p className="zacht-tekst">Aanknopingspunten, geen preek. Toets elke toepassing aan de tekst.</p>{bw("homiletiek").length ? bw("homiletiek").map((b: X) => <Bewering key={b.id} b={b} />) : <p className="zacht-tekst">Geen AI-analyse uitgevoerd.</p>}</section>
@@ -214,7 +243,7 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
             <table><thead><tr><th>Bron</th><th>Type / toegang / rechten</th><th>Passages</th>{project && <th className="geen-print">Markering</th>}</tr></thead><tbody>
               {bronnen.map((b: X) => <tr key={b.id}>
                 <td>{b.auteurs.slice(0, 3).join(", ")}{b.jaar && ` (${b.jaar})`}. {b.url ? <a href={b.url} target="_blank" rel="noreferrer"><i>{b.titel}</i></a> : <i>{b.titel}</i>}{b.doi && <span className="zacht-tekst"> DOI {b.doi}</span>}{b.beoordeling?.relevantie != null && <div className="zacht-tekst">relevantie {b.beoordeling.relevantie}/3 — {b.beoordeling.waarom}</div>}</td>
-                <td className="zacht-tekst">{b.brontype}<br />{b.toegang}<br />herbruikbaar: {b.rechten.herbruikbaar ?? "onbekend"}{b.rechten.toelichting ? ` — ${b.rechten.toelichting}` : ""}<br />geraadpleegd {b.geraadpleegd.slice(0, 10)}</td>
+                <td className="zacht-tekst">{b.brontype}<br />{b.toegang}<br />herbruikbaar: {b.rechten.herbruikbaar ?? "onbekend"}{b.rechten.toelichting ? ` — ${b.rechten.toelichting}` : ""}<br />geraadpleegd {b.geraadpleegd.slice(0, 10)}<br /><span className={`label ${b.ladder.niveau >= 5 ? "n-direct_aangetoond" : b.ladder.niveau === 4 ? "n-onderbouwde_interpretatie" : "n-niet_geverifieerd"}`} title="1 bereikbaar · 2 zoekopdracht · 3 relevant · 4 volledige inhoud · 5 geanalyseerd · 6 citaat geverifieerd">ladder {b.ladder.tekst}</span></td>
                 <td>{b.labels.slice(0, 8).map((l: string) => <button key={l} className="ref" onClick={() => setOpen(open === l ? null : l)}>{l}</button>)}{b.labels.length > 8 && "…"}</td>
                 {project && <td className="geen-print"><select value={markeringen[b.id] ?? ""} onChange={(e) => markeer(b.id, e.target.value)}><option value="">—</option>{MARKERINGEN.map((m) => <option key={m}>{m}</option>)}</select></td>}
               </tr>)}
