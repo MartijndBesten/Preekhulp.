@@ -40,7 +40,6 @@ Bewijs aanwezig voor 12 van de 15 beoordelingspunten (Gen 28, 35, 32–34, gelof
 
 - Geen Anthropic-sleutel en geen toestemming voor betaalde runs → AI-kwaliteit onbewezen (V-007).
 - Gratis API-quota (429) bij OpenAlex/Semantic Scholar/Google Books zonder sleutel (V-008).
-- denckh.nl/preekhulp/ kon vanuit deze omgeving niet worden bekeken (netwerkbeleid); bron op `denckh` `main` en Pages-uitrol wel gecontroleerd (V-006).
 - Repository is publiek zonder licentie (V-009); zichtbaarheid wijzigt Claude niet.
 
 ## Open vragen
@@ -56,7 +55,7 @@ V-007, V-008, V-009 (zie `VRAGEN.md`). V-001 t/m V-006 verwerkt.
 
 ## Bibliotheekcheck (BOUWSTENEN.md v37 op `origin/main`, gelezen 01-11-2026)
 
-Geen bestaande kaart dekt deze onderdelen. **Kandidaten** (nog geen bibliotheek-PR in deze sessie; eerst bewijs met echte AI-run): (1) HTTP-laag met 429/`Retry-After`/afkoelen per host/cache-terugval en statusladder-proef in CI; (2) claimcontrole + claim-bronmatrix + alleen-verlagende steuncontrole; (3) AI-sleutelstatus in 7 toestanden met gratis verbindingstest en vingerafdruk; (4) DOCX-extractie via mammoth-HTML met kopsecties, tabellen en voetnoten + PDF-waarschuwingen. Toekomstige kaarten via een `bibliotheek/*`-branch en PR naar `main` van de workbench. Werkwijze-lessen (o.a. `pkill -f` raakt de eigen shell; layoutoverloop pas zichtbaar met meting per viewport) nog niet in `werkwijze/LESSEN.md` vastgelegd.
+Bibliotheekupdate in **workbench-PR #103** (`bibliotheek/b106-b108-preekhulp`, versie 38), **nog niet op `main`**: B106 (externe API's robuust, CODE), B107 (controleerbare AI-beweringen, KANDIDAAT tot een echte modelrun), B108 (eigen documenten doorzoekbaar, CODE) en een aanvulling op B86 (tweede toepassing in TypeScript, zeven sleuteltoestanden). `bibliotheek-check` en dashboardtest geslaagd. Werkwijze-lessen (o.a. `pkill -f` raakt de eigen shell; layoutoverloop pas zichtbaar met meting per viewport) nog niet in `werkwijze/LESSEN.md` vastgelegd.
 
 ## Overdrachtsnotities
 

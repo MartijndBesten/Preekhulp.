@@ -213,5 +213,5 @@ Martijn, 01-11-2026: "Ja live. Ja klopt. Voor nu goed." — publiceren, eigen pr
 
 **Verwerkt in**
 
-Livecontrole 01-11-2026: de pagina zelf kon vanuit de ontwikkelomgeving **niet** worden bekeken (netwerkbeleid; geen HTTP-antwoord). Wel gecontroleerd: bron staat op `denckh` `main` (`ccc2769`) en de GitHub Pages-uitrol slaagde. `MartijndBesten/denckh` `main` → `ccc2769` (B-098, O-44 afgehandeld); Preekhulp `src/app/layout.tsx` (makerslink naar /preekhulp/); `HANDOFF.md`.
+Livecontrole: vanuit de ontwikkelomgeving niet mogelijk (netwerkbeleid); Martijn bevestigde op 01-11-2026 via de browser dat de pagina live staat en goed laadt. Bron op `denckh` `main` (`ccc2769`), GitHub Pages-uitrol geslaagd. `MartijndBesten/denckh` `main` → `ccc2769` (B-098, O-44 afgehandeld); Preekhulp `src/app/layout.tsx` (makerslink naar /preekhulp/); `HANDOFF.md`.
 
