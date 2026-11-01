@@ -87,3 +87,17 @@ Geef de predikant per bevinding een knop 'nuttig / bekend / onjuist / verder ond
 ## 6. Conclusie
 
 Meer connectors of een grotere modelprompt zijn niet automatisch beter. De eerste grote productverbetering is **betrouwbare bewijsvoering en meetbare inhoudelijke opbrengst**. Pas als de blinde Genesis 31-test met echte bronnen voor de predikant aantoonbaar nieuwe, bruikbare inzichten geeft, is uitrol naar meerdere predikanten zinvol.
+
+## 7. Echte academische API-proef (GitHub Actions 1-11-2026)
+
+De eerste automatische live-proef vanuit GitHub Actions (zonder betaalde API-sleutels) gaf:
+- **OpenAlex:** 3 echte resultaten.
+- **PThU-route via OpenAlex:** 3 echte resultaten.
+- **DOAJ:** 3 echte resultaten.
+- **Crossref:** HTTP 400; oorzaak: niet-ondersteund `language`-veld in de `select`-parameter.
+
+Na correctie van het Crossref-verzoek leverde **Crossref 3 echte resultaten** en DOAJ opnieuw 3. OpenAlex en daarmee de PThU-route gaven toen echter **HTTP 429 (rate limit)**. Dit toont aan dat OpenAlex zonder eigen API-sleutel niet als gegarandeerd continue bron mag worden voorgesteld. De zoekfunctie moet duidelijk omgaan met API-quota en tijdelijke uitval. Bronmetadata is nog geen inhoudelijke verificatie van een boek of artikel.
+
+De CI-codecontrole met **Node 24** is groen: TypeScript, eenheidstests en Next.js-productiebuild. De externe API-proef is afzonderlijk en handmatig gemaakt vanwege wisselende quota. De volledige Genesis 31-integratieproef met lokaal geïmporteerde brondata blijft afzonderlijk (workflow_dispatch). Echte AI-runs wachten op een expliciet ingesteld en begroot model.
+
+**Actie voor de pilot:** gratis OpenAlex-sleutel configureren met limieten, verbinding met de PThU-repository rechtstreeks onderzoeken, en afzonderlijk de geldigheid van vijf bronclaims door de predikant laten beoordelen.
