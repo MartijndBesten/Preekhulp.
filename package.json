@@ -1,0 +1,38 @@
+{
+  "name": "preekhulp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Preekhulp. — lokale AI-onderzoeksassistent voor predikanten (exegese, bronnen, kritische toetsing).",
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1 -p 3210",
+    "build": "next build",
+    "start": "next start -H 127.0.0.1 -p 3210",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "data:ophalen": "tsx scripts/data-ophalen.ts",
+    "data:importeren": "tsx scripts/data-importeren.ts",
+    "data:kerkvaders": "tsx scripts/data-importeren.ts --kerkvaders",
+    "bronnen:controleren": "tsx scripts/bronnen-controleren.ts",
+    "evaluatie": "tsx scripts/evaluatie.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.3.0",
+    "mammoth": "1.13.0",
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "smol-toml": "1.9.1",
+    "unpdf": "1.9.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.0",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
+  }
+}

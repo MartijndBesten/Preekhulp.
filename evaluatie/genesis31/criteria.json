@@ -1,0 +1,311 @@
+{
+  "toelichting": "Automatische signalen per verplichte kritische vraag (opdracht §14). Detectie is grof (verwijzingen/trefwoorden); het oordeel over relevantie en onderbouwing blijft bij de predikant (zie beoordelingstabel in het rapport).",
+  "vragen": [
+    {
+      "nr": 1,
+      "vraag": "Is aangetoond dat Jakob zijn gelofte vergeten was?",
+      "refs": [
+        "Genesis 28:20-22",
+        "Genesis 35:1"
+      ],
+      "woorden": [
+        "vergeten",
+        "vergat",
+        "forgot",
+        "forgotten",
+        "neglect",
+        "uitstel",
+        "delay",
+        "gelofte",
+        "vow"
+      ],
+      "lemmas": [
+        "H5088",
+        "H5087"
+      ]
+    },
+    {
+      "nr": 2,
+      "vraag": "Waarom verwijst God expliciet naar Betel?",
+      "refs": [
+        "Genesis 28:19",
+        "Genesis 28:10-22"
+      ],
+      "woorden": [
+        "Betel",
+        "Bethel",
+        "Beth-el"
+      ],
+      "lemmas": [
+        "H1008"
+      ]
+    },
+    {
+      "nr": 3,
+      "vraag": "Waarom wordt Betel later opnieuw genoemd?",
+      "refs": [
+        "Genesis 35:1-15"
+      ],
+      "woorden": [
+        "Genesis 35",
+        "35:1",
+        "35:7",
+        "El-Betel",
+        "El-bethel"
+      ],
+      "lemmas": []
+    },
+    {
+      "nr": 4,
+      "vraag": "Welke betekenis hebben de huisgoden van Rachel?",
+      "refs": [
+        "Genesis 31:19",
+        "Genesis 31:34-35",
+        "Genesis 35:2-4"
+      ],
+      "woorden": [
+        "terafim",
+        "teraphim",
+        "huisgoden",
+        "household gods",
+        "idols",
+        "beelden"
+      ],
+      "lemmas": [
+        "H8655"
+      ]
+    },
+    {
+      "nr": 5,
+      "vraag": "Is de terugkeer in Genesis 31 hetzelfde moment als Genesis 35?",
+      "refs": [
+        "Genesis 33:18-20",
+        "Genesis 35:1"
+      ],
+      "woorden": [
+        "chronologie",
+        "chronology",
+        "Sichem",
+        "Shechem",
+        "Sukkot",
+        "Succoth",
+        "jaren later",
+        "years later"
+      ],
+      "lemmas": []
+    },
+    {
+      "nr": 6,
+      "vraag": "Wat voegen Genesis 32–34 toe?",
+      "refs": [
+        "Genesis 32",
+        "Genesis 33",
+        "Genesis 34"
+      ],
+      "woorden": [
+        "Esau",
+        "Pniël",
+        "Peniel",
+        "Penuel",
+        "worstel",
+        "wrestl",
+        "Dina",
+        "Dinah",
+        "Sichem",
+        "Shechem"
+      ],
+      "lemmas": []
+    },
+    {
+      "nr": 7,
+      "vraag": "Hoe sterk is de verbinding met Johannes 1:51?",
+      "refs": [
+        "Johannes 1:51",
+        "Genesis 28:12"
+      ],
+      "woorden": [
+        "ladder",
+        "Mensenzoon",
+        "Son of Man",
+        "Johannes 1:51",
+        "John 1:51"
+      ],
+      "lemmas": []
+    },
+    {
+      "nr": 8,
+      "vraag": "Welke dooptheologische verbanden zijn verdedigbaar?",
+      "refs": [],
+      "woorden": [
+        "doop",
+        "baptism",
+        "kinderdoop",
+        "infant baptism",
+        "verbond",
+        "covenant",
+        "sacrament"
+      ],
+      "lemmas": []
+    },
+    {
+      "nr": 9,
+      "vraag": "Welke interpretaties leggen een ander accent dan de gehouden preek?",
+      "refs": [],
+      "woorden": [
+        "ander accent",
+        "alternatie",
+        "joodse",
+        "Jewish",
+        "rabbij",
+        "katholiek",
+        "historisch-kritisch",
+        "source-critical",
+        "anders dan"
+      ],
+      "lemmas": []
+    },
+    {
+      "nr": 10,
+      "vraag": "Welke nieuwe inzichten kunnen een ervaren predikant daadwerkelijk verder helpen?",
+      "refs": [],
+      "woorden": [],
+      "lemmas": [],
+      "nieuweLijnen": true
+    }
+  ],
+  "preeklijnen": [
+    {
+      "id": "twintig-jaar",
+      "lijn": "Twintig jaar bij Laban",
+      "refs": [
+        "Genesis 31:38",
+        "Genesis 31:41"
+      ],
+      "woorden": [
+        "twintig",
+        "twenty"
+      ]
+    },
+    {
+      "id": "welvaart",
+      "lijn": "Gezin en welvaart opgebouwd",
+      "refs": [
+        "Genesis 30:43",
+        "Genesis 31:1"
+      ],
+      "woorden": [
+        "welvaart",
+        "rijkdom",
+        "wealth",
+        "prosper",
+        "bezit"
+      ]
+    },
+    {
+      "id": "teruggeroepen",
+      "lijn": "God roept terug naar het land van de vaderen",
+      "refs": [
+        "Genesis 31:3",
+        "Genesis 31:13"
+      ],
+      "woorden": [
+        "keer terug",
+        "return",
+        "terugkeer"
+      ]
+    },
+    {
+      "id": "betel-belofte",
+      "lijn": "Betel: plaats van Gods belofte",
+      "refs": [
+        "Genesis 28:13-15"
+      ],
+      "woorden": [
+        "belofte",
+        "promise"
+      ]
+    },
+    {
+      "id": "eigen-gelofte",
+      "lijn": "Herinnering aan Jakobs eigen gelofte",
+      "refs": [
+        "Genesis 28:20-22"
+      ],
+      "woorden": [
+        "gelofte",
+        "vow"
+      ]
+    },
+    {
+      "id": "trouw-identiteit",
+      "lijn": "Gods trouw als fundament van identiteit",
+      "refs": [],
+      "woorden": [
+        "trouw",
+        "faithful",
+        "identiteit",
+        "identity"
+      ]
+    },
+    {
+      "id": "doop",
+      "lijn": "Verbinding met Gods belofte in de doop",
+      "refs": [],
+      "woorden": [
+        "doop",
+        "baptism"
+      ]
+    },
+    {
+      "id": "afgoden-35",
+      "lijn": "Genesis 35: afgoden wegdoen",
+      "refs": [
+        "Genesis 35:2-4"
+      ],
+      "woorden": [
+        "vreemde goden",
+        "foreign gods",
+        "afgod",
+        "idol"
+      ]
+    },
+    {
+      "id": "moderne-afgoden",
+      "lijn": "Hedendaagse afgoden",
+      "refs": [],
+      "woorden": [
+        "sociale media",
+        "carrière",
+        "status",
+        "prestatie"
+      ]
+    },
+    {
+      "id": "ouders",
+      "lijn": "Ouders: voorleven",
+      "refs": [],
+      "woorden": [
+        "ouders",
+        "parents",
+        "voorleven"
+      ]
+    },
+    {
+      "id": "eredienst",
+      "lijn": "Eredienst als heroriëntatie",
+      "refs": [],
+      "woorden": [
+        "eredienst",
+        "zondag",
+        "worship",
+        "heroriënt"
+      ]
+    }
+  ],
+  "preekGedeelten": [
+    "Genesis 28",
+    "Genesis 31",
+    "Genesis 35"
+  ],
+  "toelichtingPreekGedeelten": "Gedeelten die de preek (volgens de samenvatting) gebruikt: Betel/belofte (Gen 28), Gen 31, Gen 35. Een lijn met verwijzingen daarbuiten telt als 'nieuw t.o.v. preek'."
+}
