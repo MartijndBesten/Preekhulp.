@@ -36,6 +36,20 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  academische-api-proef:
+    name: Externe academische API-proef (zonder betaalde sleutels)
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run bronnen:proef
+
   met-open-brondata:
     name: Volledige lokale Genesis 31-integratietest
     if: github.event_name == 'workflow_dispatch' && inputs.volledige_brondata
