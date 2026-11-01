@@ -33,6 +33,8 @@ describe("Academische connectors (vorm)", () => {
     expect(r[0].record.brontype).toBe("academisch artikel (peer review niet vastgesteld)");
     expect(r[0].passages[0].soort).toBe("metadata");
     expect(r[0].record.auteurs).toEqual(["B. Schrijver"]);
+    const aangeroepenUrl = String(vi.mocked(fetch).mock.calls[0][0]);
+    expect(new URL(aangeroepenUrl).searchParams.get("select")).not.toContain("language");
   });
   it("HTTP-fouten worden een nette fout, geen verzonnen resultaat", async () => {
     vi.stubGlobal("fetch", antwoord({ error: "x" }, 503));
