@@ -1,7 +1,7 @@
 # HANDOFF — Preekhulp.
 
-**Status:** v0.1 gebouwd en lokaal getest (zonder echte AI); wacht op besluiten V-001 t/m V-005.
-**Bijgewerkt:** 2026-11-01 ±12:15 UTC door Claude Code (cloudsessie).
+**Status:** v0.1 gebouwd en lokaal getest (zonder echte AI); gekoppeld aan Denckh (makersvermelding + productpagina op branch, nog niet live); wacht op besluiten V-001 t/m V-006.
+**Bijgewerkt:** 2026-11-01 ±13:00 UTC door Claude Code (cloudsessie).
 **Branch:** `claude/onderzoeksassistent-v0-1` (repository `MartijndBesten/Preekhulp.`, was leeg).
 **Volgende actor:** Martijn (vragen V-001 t/m V-005), daarna Claude Code.
 
@@ -46,9 +46,18 @@ Alles nieuw in deze repository: `package.json`, configuratie, `src/` (app en `li
 - Netwerkbeleid cloudsessie: academische/boek-API's, PThU, CCEL, BibleHub e.d. niet bereikbaar; officiële documentatie (YouTube, OpenAlex, Biblia) kon niet live worden nagelezen. Connectors volgen bekende API-vormen; actuele regels (bv. OpenAlex-sleutels) moeten bij de live test worden gecontroleerd (V-002).
 - Geen AI-sleutel voor de app (bewust niet het Claude Code-abonnement) → interpretatiekwaliteit onbewezen (V-001).
 
+## Koppeling met Denckh (opdracht Martijn 01-11-2026: "Koppel het aan Denckh.nl")
+
+| Onderdeel | Besloten | Gebouwd | Bewezen |
+|---|---|---|---|
+| Makersvermelding in Preekhulp (footer: "Ontwikkeld door" + officiële signatuur met krul, licht/donker, link naar denckh.nl) volgens `bibliotheek/DENCKH_MERKVERMELDING.md` | ja (opdracht) | ja — logobestanden ongewijzigd gekopieerd uit `MartijndBesten/denckh` `public/brand/` | browsercontrole licht en donker; build geslaagd |
+| Productpagina `denckh.nl/preekhulp/` (repo `MartijndBesten/denckh`, branch `claude/preekhulp`, commit `96b98c9`, beslissing B-098, dossier `docs/cases/preekhulp.md`) | publicatie nog niet (O-44 daar / V-006 hier) | ja — zelfde opbouw als Ouderhulp., vier echte schermen, alleen geteste functies; AI-laag en externe bronnen als "proefronde" | typecheck, lint, build; e2e 21/21 nieuwe controles + interne links; volledige suite loopt vast op bekende homepagetest 320px (O-38 in denckh, ook zonder wijziging) |
+
+De makerslink wijst nu naar `https://denckh.nl/` (constante `DENCKH_URL` in `src/app/layout.tsx`); na publicatie omzetten naar `/preekhulp/`.
+
 ## Open vragen
 
-V-001, V-002, V-003, V-004, V-005 (zie `VRAGEN.md`).
+V-001, V-002, V-003, V-004, V-005, V-006 (zie `VRAGEN.md`). V-005 is deels beantwoord door de opdracht "koppel het aan Denckh.nl" (Denckh als maker); licentie en registratie staan nog open.
 
 ## Volgende stap
 

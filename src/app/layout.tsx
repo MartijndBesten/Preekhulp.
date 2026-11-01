@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 
+/** Productpagina van Preekhulp. op denckh.nl. Tot die live staat: de homepage van Denckh. */
+const DENCKH_URL = "https://denckh.nl/";
+
 export const metadata: Metadata = {
   title: "Preekhulp — onderzoeksassistent",
   description: "Lokale onderzoeksassistent voor predikanten: exegese, bronnen, kritische toetsing. Geen preekschrijver.",
@@ -26,6 +29,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </header>
         <main>{children}</main>
+        <footer className="voet">
+          <span>Preekhulp. — onderzoek, geen preek. Jij blijft eigenaar van uitleg en preek.</span>
+          {/* Makersvermelding volgens DENCKH_MERKVERMELDING: officiële signatuur met krul, niet nagetekend. */}
+          <a className="maker" href={DENCKH_URL} target="_blank" rel="noreferrer" aria-label="Ontwikkeld door Denckh (denckh.nl)">
+            <span>Ontwikkeld door</span>
+            <picture>
+              <source srcSet="/brand/denckh-logo-signature-light.svg" media="(prefers-color-scheme: dark)" />
+              <img src="/brand/denckh-logo-signature.svg" alt="Denckh." width={1000} height={302} />
+            </picture>
+          </a>
+        </footer>
       </body>
     </html>
   );

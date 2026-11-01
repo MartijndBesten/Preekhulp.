@@ -125,6 +125,28 @@ Nog niet beantwoord.
 
 Nog niet verwerkt.
 
+### V-006 — Productpagina op denckh.nl publiceren?
+
+status: open
+gesteld_door: claude
+datum: 2026-11-01
+
+**Vraag**
+
+De pagina `denckh.nl/preekhulp/` staat klaar op branch `claude/preekhulp` in `MartijndBesten/denckh` (B-098). Mag die naar `main` (= direct live via GitHub Pages)? Graag ook bevestigen: Preekhulp. als eigen product van Denckh, proefronde-aanmeldingen via `info@denckh.nl`, en de teksten (geen prijzen, AI-laag als "proefronde").
+
+**Waarom nodig**
+
+Publiceren op denckh.nl gebeurt alleen met akkoord van de eigenaar (CLAUDE.md van de denckh-repo en `DENCKH_MERKVERMELDING.md`).
+
+**Antwoord**
+
+Nog niet beantwoord.
+
+**Verwerkt in**
+
+Nog niet verwerkt.
+
 ## Beantwoorde en verwerkte vragen
 
 Nog geen.

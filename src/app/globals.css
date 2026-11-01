@@ -61,4 +61,8 @@ details > summary { cursor: pointer; color: var(--zacht); font-size: 14px; }
 .modus b { display: block; }
 .citaat { border-left: 3px solid var(--lijn); padding-left: 10px; color: var(--zacht); margin: 6px 0; font-size: 15px; white-space: pre-wrap; }
 .kolommen { columns: 2; column-gap: 24px; } @media (max-width: 800px) { .kolommen { columns: 1; } .inhoud { grid-template-columns: 1fr; } .inhoud nav { position: static; } .modi { grid-template-columns: 1fr; } }
+.voet { max-width: 1180px; margin: 0 auto; padding: 18px 16px 32px; border-top: 1px solid var(--lijn); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--zacht); font-size: 13px; }
+.maker { display: inline-flex; align-items: center; gap: 8px; color: var(--zacht); text-decoration: none; }
+.maker img { height: 22px; width: auto; display: block; }
+.maker:hover span { color: var(--tekst); }
 @media print { .kop, .geen-print, .inhoud nav { display: none !important; } .inhoud { display: block; } body { background: #fff; color: #000; } .kaart { box-shadow: none; border: 0; padding: 0; } }
