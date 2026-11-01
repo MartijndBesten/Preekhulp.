@@ -51,6 +51,10 @@ t("Onderzoeksworkflow (Genesis 31:13)", () => {
     const begrippen = g.signalen.find((s) => s.titel.startsWith("Begrippen uit je gedachte"))!.toelichting;
     expect(begrippen).toMatch(/sacrament/);
     expect(begrippen).not.toMatch(/verbond/); // staat in Gen 31:44 (SV): geen vals signaal
+    expect(begrippen).not.toMatch(/Genesis/); // boeknaam is geen begrip
+    // Woorden in exact dezelfde verzen worden één signaal
+    const sleutels = r.signalen.filter((s) => s.soort === "tekst").map((s) => (s.verzen ?? []).join(","));
+    expect(new Set(sleutels).size).toBe(sleutels.length);
   }, 60_000);
 
   it("YouTube-link in de vraag: met transcript tijdlinks als bewijs, zonder transcript geen inhoudelijke uitspraken", async () => {

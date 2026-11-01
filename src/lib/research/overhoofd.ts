@@ -16,6 +16,9 @@ import { Verwijzing } from "./types";
 import { controleer, NIVEAUS, type Niveau } from "../verification/claims";
 import { DATA_NIET_INSTRUCTIE } from "../ai";
 import { vindVerwijzingenInTekst } from "../scripture/reference";
+import { BOEKEN } from "../scripture/books";
+
+const BOEKNAMEN = new Set(BOEKEN.flatMap((b) => [b.nl, b.en, ...b.aliassen]).map((n) => n.toLowerCase()));
 
 export type Soort = "tekst" | "verband" | "thema" | "perspectief" | "bewijs" | "bronnen" | "aanname";
 
@@ -70,15 +73,21 @@ export function signalen(x: Dossier, gedachte?: string | null, d?: DatabaseSync)
   const kandidaten = (x.c?.motievenContext?.lemmas ?? [])
     .filter((l) => !focusLemmas.has(l.strong) && !l.eigennaam && l.verzenTotaal <= 80 && l.inFocus.length >= 2)
     .sort((a, b) => b.idf * b.inFocus.length - a.idf * a.inFocus.length);
-  for (const l of kandidaten.slice(0, 6)) {
+  // Woorden die in precies dezelfde verzen staan (bv. 'gestreept' en 'gespikkeld') vormen één verhaalelement.
+  const groepen = new Map<string, typeof kandidaten>();
+  for (const l of kandidaten.slice(0, 10)) {
     if (l.inFocus.some((k) => verdiepingVerzen.has(k))) continue;
-    const labels = l.inFocus.map((k) => labelReeks(k, k));
+    const sleutel = [...l.inFocus].sort().join(",");
+    (groepen.get(sleutel) ?? groepen.set(sleutel, []).get(sleutel)!).push(l);
+  }
+  for (const [, ls] of groepen) {
+    const labels = ls[0].inFocus.map((k) => labelReeks(k, k));
     if (labels.some(genoemd)) continue;
-    const glosse = l.glosse.replace(/^to /, "").split(/[:;,]/)[0].trim();
+    const woorden = ls.map((l) => `${l.lemma} ‘${l.glosse.replace(/^to /, "").split(/[:;,]/)[0].trim()}’`);
     uit.push({
       soort: "tekst", ernst: "middel",
-      titel: `${l.lemma} ‘${glosse}’ komt ${l.inFocus.length}× terug in het hoofdstuk`,
-      toelichting: `Een zeldzaam woord (${l.verzenTotaal} verzen in de hele Bijbel) dat het verhaal herhaalt in ${labels.join(", ")}. Geen enkele bewering in je dossier gaat erop in.`,
+      titel: `${woorden.join(" en ")} ${ls.length > 1 ? "komen" : "komt"} ${ls[0].inFocus.length}× terug in het hoofdstuk`,
+      toelichting: `${ls.length > 1 ? "Zeldzame woorden" : "Een zeldzaam woord"} (${ls.map((l) => l.verzenTotaal).join("/")} verzen in de hele Bijbel) die het verhaal herhaalt in ${labels.join(", ")}. Geen enkele bewering in je dossier gaat erop in.`,
       actie: "Lees deze verzen in hun samenhang: draagt dit element bij aan de betekenis van je focustekst, of juist niet?",
       verzen: labels,
     });
@@ -128,8 +137,8 @@ export function signalen(x: Dossier, gedachte?: string | null, d?: DatabaseSync)
       ...(x.c?.motieven?.ntVerbanden ?? []).filter((n) => n.stemmen >= 10).slice(0, 2).map((n) => ({ label: n.label, waarom: `vaak genoemde kruisverwijzing (${n.stemmen} stemmen)` })),
       ...(x.v?.onderwerpen ?? []).map((o) => ({ label: o.verzen.length ? labelReeks(o.verzen[0], o.verzen[o.verzen.length - 1]) : "", waarom: `verdiepingsonderwerp: ${o.titel}` })).filter((k) => k.label),
     ].filter((k) => !raakt(k.label));
-    if (kandidaten.length) uit.push({ soort: "verband", ernst: "hoog", titel: `Je gedachte noemt ${kandidaten.length} relevante gedeelten niet`, toelichting: kandidaten.slice(0, 5).map((k) => `${k.label} — ${k.waarom}`).join("; "), actie: "Ga na of deze gedeelten je gedachte bevestigen, nuanceren of tegenspreken.", verzen: kandidaten.slice(0, 5).map((k) => k.label) });
-    const woorden = [...new Set(gedachte.split(/[^\p{L}-]+/u).filter((w) => w.length >= 6 && !GEWOON.has(w.toLowerCase())))];
+    if (kandidaten.length) uit.push({ soort: "verband", ernst: "middel", titel: `Je gedachte noemt ${Math.min(5, kandidaten.length)} mogelijk relevante gedeelten niet`, toelichting: `${kandidaten.slice(0, 5).map((k) => `${k.label} — ${k.waarom}`).join("; ")}. Gevonden via gedeelde zeldzame woorden en kruisverwijzingen: sommige zijn inhoudelijk sterk, andere toevallig woordgebruik.`, actie: "Ga na of deze gedeelten je gedachte bevestigen, nuanceren of tegenspreken — en welke alleen een woord delen.", verzen: kandidaten.slice(0, 5).map((k) => k.label) });
+    const woorden = [...new Set(gedachte.split(/[^\p{L}-]+/u).filter((w) => w.length >= 6 && !GEWOON.has(w.toLowerCase()) && !BOEKNAMEN.has(w.toLowerCase())))];
     const buiten = woorden.filter((w) => !tekstStammen.has(stam(w)) && !ontbrekend.includes(w)).slice(0, 6);
     if (buiten.length && tekst) uit.push({ soort: "thema", ernst: "middel", titel: `Begrippen uit je gedachte die niet in de tekst staan`, toelichting: `${buiten.map((w) => `‘${w}’`).join(", ")} komen niet voor in de focus- en contexttekst (SV/BSB). Soms is dat een vertaalkwestie of een synoniem; soms leg je er een eigen kader op.`, actie: "Ga per begrip na: staat het (met een ander woord) in de tekst, of komt het uit je eigen theologische kader?" });
     const omstreden = x.beweringen.filter((b) => b.niveau === "omstreden");
