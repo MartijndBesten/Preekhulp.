@@ -2,7 +2,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { json, nu } from "../db";
 import { aanbiederStatus, ramingUsd } from "../ai";
-import { leesInstellingen } from "../settings";
+import { leesInstellingen, type Instellingen } from "../settings";
 import {
   MODUS_CONFIG, bewaarBeweringen, stapVUitvoeren, nieuwOnderzoekId, stapA, stapB, stapC, stapD, stapE, stapF, stapG, stapUitvoer,
   type RunCtx, type UitvoerA, type UitvoerB, type UitvoerC, type UitvoerD, type UitvoerE, type UitvoerF,
@@ -21,9 +21,10 @@ export interface Raming {
 }
 
 /** Bovengrens van de AI-kosten vóór de start (slechtste geval: volledige max_tokens per aanroep). */
-export function raming(d: DatabaseSync, modus: Modus): Raming {
-  const i = leesInstellingen(d);
-  const st = aanbiederStatus(i);
+/** Raming vooraf. Met `voor` (bv. ander model) wordt ook geraamd als er nog geen sleutel is — voor de evaluatieplanning. */
+export function raming(d: DatabaseSync, modus: Modus, voor?: Partial<Instellingen>): Raming {
+  const i = { ...leesInstellingen(d), ...voor };
+  const st = voor ? { actief: true, reden: null, model: i.anthropicModel } : aanbiederStatus(i);
   const cfg = MODUS_CONFIG[modus];
   const aanroepen: Raming["aanroepen"] = [];
   const voeg = (stap: string, maxTokens: number, invoerTekens: number) => aanroepen.push({ stap, maxTokens, invoerTekens, maxUsd: ramingUsd(i, invoerTekens, maxTokens) });
