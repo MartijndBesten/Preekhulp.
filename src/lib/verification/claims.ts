@@ -76,7 +76,7 @@ export function citaatInTekst(citaat: string, tekst: string): boolean {
   return true;
 }
 
-export function controleer(voorgesteld: Niveau, verwijzingen: Verwijzing[], bewijs: Map<string, Bewijs>): { niveau: Niveau; controle: Controle; verwijzingen: Verwijzing[] } {
+export function controleer(voorgesteld: Niveau, verwijzingen: Verwijzing[], bewijs: Map<string, Bewijs>, beweringTekst?: string): { niveau: Niveau; controle: Controle; verwijzingen: Verwijzing[] } {
   const geldig: string[] = [];
   const onbekend: string[] = [];
   const nietGevonden: string[] = [];
@@ -116,6 +116,14 @@ export function controleer(voorgesteld: Niveau, verwijzingen: Verwijzing[], bewi
   if (!geldig.length) {
     niveau = "niet_geverifieerd";
     reden = onbekend.length ? "Verwijzingen bestaan niet in het bewijsmateriaal" : "Geen verwijzingen";
+  } else if (voorgesteld === "direct_aangetoond" && soorten.includes("data") && !primairMetCitaat && beweringTekst && !geldig.some((l) => {
+    const b = bewijs.get(l)!;
+    return b.soort === "data" && normaliseerVoorVergelijking(b.tekst) === normaliseerVoorVergelijking(beweringTekst);
+  })) {
+    // Een AI mag een berekend databewijs niet gebruiken als vrijbrief voor een ándere stellige conclusie.
+    // Alleen de letterlijk opgeslagen uitkomst van de eigen deterministische analyse is direct aangetoond.
+    niveau = "mogelijke_onderzoekslijn";
+    reden = "Berekende data bewijzen niet letterlijk deze door AI geformuleerde claim; inhoudelijke controle vereist";
   } else if (voorgesteld === "direct_aangetoond" && !(primairMetCitaat || soorten.includes("data"))) {
     niveau = heeftVolleTekst && geldig.length >= 2 ? "onderbouwde_interpretatie" : "mogelijke_onderzoekslijn";
     reden = "'Direct aangetoond' vereist een letterlijk teruggevonden citaat uit een primaire bron of berekende tekstdata";
