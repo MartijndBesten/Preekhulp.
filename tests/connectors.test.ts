@@ -21,6 +21,7 @@ describe("Academische connectors (vorm)", () => {
     const r = await openAlex.zoek({ tekst: "Bethel" }, ctx);
     expect(r[0].record.samenvatting).toBe("Jacob returns home");
     expect(r[0].record.toegang).toBe("abstract");
+    expect(r[0].record.brontype).toBe("academisch artikel (peer review niet vastgesteld)");
     expect(r[0].record.rechten.herbruikbaar).toBe("ja");
     expect(r[0].passages[0].soort).toBe("abstract");
   });
@@ -29,6 +30,7 @@ describe("Academische connectors (vorm)", () => {
     const { crossref } = await import("../src/lib/sources/connectors/academisch");
     const r = await crossref.zoek({ tekst: "Jacob vow" }, ctx);
     expect(r[0].record.toegang).toBe("alleen metadata");
+    expect(r[0].record.brontype).toBe("academisch artikel (peer review niet vastgesteld)");
     expect(r[0].passages[0].soort).toBe("metadata");
     expect(r[0].record.auteurs).toEqual(["B. Schrijver"]);
   });
