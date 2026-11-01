@@ -4,6 +4,8 @@ _Gegenereerd uit `src/lib/sources/registry.ts` en `datasets.ts` — niet met de 
 
 Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog) niet live getest of met beperkingen · **alleen doorverwijzing** = link, geen koppeling · **niet beschikbaar** = bewust niet gekoppeld.
 
+Statusladder per gevonden bron in een onderzoek: 1 API bereikbaar · 2 zoekopdracht gelukt · 3 relevante bron gevonden · 4 volledige inhoud toegankelijk · 5 inhoud geanalyseerd (fragment ging naar de AI) · 6 conclusie geverifieerd (letterlijk citaat in de brontekst teruggevonden). Niveaus 1–4 meet `npm run bronnen:proef`; 5–6 alleen een echt onderzoek. Een catalogusvermelding komt nooit verder dan 3 en is nooit basis voor een inhoudelijke samenvatting.
+
 | Bron | Categorie | Status | Volledige tekst | Licentie |
 |---|---|---|---|---|
 | Bijbelteksten (lokaal): Statenvertaling + Berean Standard Bible | Bijbel en grondtaal | werkend | Ja | SV: CC0/publiek domein (editie 1888-transcriptie). BSB: publiek domein. |
@@ -11,11 +13,11 @@ Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog)
 | Kruisverwijzingen (lokaal): OpenBible.info | Bijbel en grondtaal | werkend | n.v.t. | CC BY 4.0 |
 | Historische commentaren (lokaal): Kanttekeningen SV, Calvijn, Matthew Henry (+ optioneel kerkvaders) | Historische commentaren en boeken | werkend | Ja (per vers of perikoop) | Zie per werk (tabel 'werken') |
 | Eigen bibliotheek (lokaal): preken, notities, transcripten, toegestane fragmenten | Eigen bibliotheek | werkend | Ja | Privé |
-| HelloAO Free Use Bible API — publiek-domeincommentaren | Historische commentaren en boeken | gedeeltelijk | Ja (per vers) | Publiek domein (teksten) |
+| HelloAO Free Use Bible API — publiek-domeincommentaren | Historische commentaren en boeken | werkend | Ja (per vers) | Publiek domein (teksten) |
 | OpenAlex | Academisch | gedeeltelijk | Nee — alleen links naar open-accessversies | Metadata CC0 |
 | Protestantse Theologische Universiteit (via OpenAlex + doorverwijzing) | Academisch | gedeeltelijk | Alleen via open-accesslinks van OpenAlex | Per publicatie |
-| Crossref | Academisch | gedeeltelijk | Nee | Metadata grotendeels vrij (CC0-feiten) |
-| DOAJ — Directory of Open Access Journals | Academisch | gedeeltelijk | Via link naar tijdschrift | Metadata CC0; artikelen per tijdschrift-licentie (vaak CC BY) |
+| Crossref | Academisch | werkend | Nee | Metadata grotendeels vrij (CC0-feiten) |
+| DOAJ — Directory of Open Access Journals | Academisch | werkend | Via link naar tijdschrift | Metadata CC0; artikelen per tijdschrift-licentie (vaak CC BY) |
 | Semantic Scholar | Academisch | gedeeltelijk | Nee (soms open-access-PDF-link) | API-licentievoorwaarden S2 |
 | CORE (open-access repositories) | Academisch | gedeeltelijk | Soms (fullText-veld) | Per publicatie |
 | Internet Archive | Historische commentaren en boeken | gedeeltelijk | Soms (publiek-domeinitems met tekstlaag) | Per item (licenseurl/rights); 'uitleenbaar' ≠ herbruikbaar |
@@ -120,7 +122,7 @@ Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog)
 - **Technische uitvoerbaarheid:** Hoog
 - **Geschiktheid pilot:** Hoog
 - **Status:** werkend — Standaard privé: inhoud gaat niet naar een AI-aanbieder, tenzij dat in Instellingen is toegestaan.
-- **Getest:** 01-11-2026: upload TXT/MD/SRT/VTT/DOCX/PDF, zoeken, verwijderen (zie tests).
+- **Getest:** 01-11-2026: echte testbestanden (PDF tekst/meerdere pagina's/voetnoten/twee kolommen/scan; DOCX koppen/tabel/voetnoten), zoeken, origineel openen, verwijderen — tests/documenten-echt.test.ts.
 
 ### HelloAO Free Use Bible API — publiek-domeincommentaren
 
@@ -134,23 +136,23 @@ Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog)
 - **Kosten:** Gratis
 - **Technische uitvoerbaarheid:** Hoog
 - **Geschiktheid pilot:** Hoog — voegt Keil-Delitzsch toe (belangrijk exegetisch OT-commentaar)
-- **Status:** gedeeltelijk — Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving). URL-patroon afgeleid uit documentatie van een afgeleid project (Pillar Commentary Data).
-- **Getest:** Niet live getest.
+- **Status:** werkend — Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): vier commentaren gekoppeld (Keil-Delitzsch, Gill, Clarke, Jamieson-Fausset-Brown). Gill per vers; de andere drie per perikoop — dan toont Preekhulp de sectie die vóór het gevraagde vers begint, met de vermelding dat dat gecontroleerd moet worden.
+- **Getest:** 01-11-2026 live: 4/4 commentaren leveren tekst bij Gen 31:13 (3 via perikoopsectie).
 
 ### OpenAlex
 
 - **Officiële website:** https://openalex.org/
 - **Zoekmogelijkheden:** Trefwoord, auteur, instelling, jaar, open access, type
 - **API's of datasets:** REST JSON (api.openalex.org/works)
-- **Toegangsvoorwaarden:** Open; optioneel API-sleutel en contactadres (polite pool). Actuele sleutel-/kredietregels nog te controleren in docs.openalex.org.
+- **Toegangsvoorwaarden:** Zonder sleutel beperkt gratis zoeken; gratis OpenAlex-API-sleutel aanbevolen voor structureel gebruik en paging. Dagbudget en tarieven actueel controleren via help.openalex.org.
 - **Licentievoorwaarden:** Metadata CC0
 - **Full-textgebruik:** Nee — alleen links naar open-accessversies
 - **Actualiteit:** Dagelijks bijgewerkt
 - **Kosten:** Gratis (sleutel/limieten volgens aanbieder)
 - **Technische uitvoerbaarheid:** Hoog (JSON-API)
 - **Geschiktheid pilot:** Hoog als vindplaats academische literatuur
-- **Status:** gedeeltelijk — Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving).
-- **Getest:** Unit-test met vaste voorbeeldrespons (vorm), geen live-aanroep.
+- **Status:** gedeeltelijk — Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): run 1 HTTP 429, run 2 bereikbaar met relevante treffer ('Genesis 28.10–22: Jacob at Bethel'), alleen abstract/metadata. Zonder sleutel wisselend quotum; gratis sleutel aanbevolen.
+- **Getest:** 01-11-2026 live: 1× 429, 1× ok (relevant, abstract).
 
 ### Protestantse Theologische Universiteit (via OpenAlex + doorverwijzing)
 
@@ -164,8 +166,8 @@ Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog)
 - **Kosten:** Gratis
 - **Technische uitvoerbaarheid:** Middel
 - **Geschiktheid pilot:** Middel — waardevol voor PKN-context; directe harvesting eerst juridisch/technisch checken
-- **Status:** gedeeltelijk — Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving). De PThU-website was in de ontwikkelomgeving niet bereikbaar; repository-interface niet geverifieerd.
-- **Getest:** Niet live getest.
+- **Status:** gedeeltelijk — Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): bereikbaar, 0 treffers voor deze zoekvraag (run 1: HTTP 429 via OpenAlex).
+- **Getest:** 01-11-2026 live: bereikbaar, geen treffers.
 
 ### Crossref
 
@@ -179,8 +181,8 @@ Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog)
 - **Kosten:** Gratis (sleutel/limieten volgens aanbieder)
 - **Technische uitvoerbaarheid:** Hoog (JSON-API)
 - **Geschiktheid pilot:** Hoog voor bibliografische verificatie (bestaat deze DOI/titel echt?)
-- **Status:** gedeeltelijk — Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving).
-- **Getest:** Unit-test met vaste voorbeeldrespons, geen live-aanroep.
+- **Status:** werkend — Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs bereikbaar met relevante treffer; alleen metadata (geen volledige tekst).
+- **Getest:** 01-11-2026 live: 2× ok, relevante metadata.
 
 ### DOAJ — Directory of Open Access Journals
 
@@ -194,8 +196,8 @@ Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog)
 - **Kosten:** Gratis (sleutel/limieten volgens aanbieder)
 - **Technische uitvoerbaarheid:** Hoog (JSON-API)
 - **Geschiktheid pilot:** Hoog — o.a. open-access theologie/homiletiek (bv. Int. Journal of Homiletics, Handelingen indien geïndexeerd)
-- **Status:** gedeeltelijk — Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving).
-- **Getest:** Niet live getest.
+- **Status:** werkend — Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs bereikbaar met relevante treffers (open access, metadata + abstract).
+- **Getest:** 01-11-2026 live: 2× ok, relevante treffers.
 
 ### Semantic Scholar
 
@@ -209,8 +211,8 @@ Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog)
 - **Kosten:** Gratis (sleutel/limieten volgens aanbieder)
 - **Technische uitvoerbaarheid:** Hoog (JSON-API)
 - **Geschiktheid pilot:** Middel — theologie minder goed gedekt dan exacte wetenschappen
-- **Status:** gedeeltelijk — Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving).
-- **Getest:** Niet live getest.
+- **Status:** gedeeltelijk — Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs HTTP 429 zonder sleutel. Preekhulp koelt af en gaat door met andere bronnen.
+- **Getest:** 01-11-2026 live: 2× HTTP 429.
 
 ### CORE (open-access repositories)
 
@@ -224,8 +226,8 @@ Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog)
 - **Kosten:** Gratis (sleutel/limieten volgens aanbieder)
 - **Technische uitvoerbaarheid:** Hoog (JSON-API)
 - **Geschiktheid pilot:** Middel-hoog voor repository-materiaal (o.a. Nederlandse universiteiten)
-- **Status:** gedeeltelijk — Vereist eigen gratis sleutel. Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving).
-- **Getest:** Niet live getest.
+- **Status:** gedeeltelijk — Vereist eigen gratis sleutel; zonder sleutel niet live getest.
+- **Getest:** Niet live getest (geen sleutel).
 
 ### Internet Archive
 
@@ -239,8 +241,8 @@ Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog)
 - **Kosten:** Gratis
 - **Technische uitvoerbaarheid:** Middel (kwaliteit OCR wisselend)
 - **Geschiktheid pilot:** Middel — vindplaats voor oude commentaren (Keil-Delitzsch, Gill, Lange e.d.)
-- **Status:** gedeeltelijk — Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving). Alleen metadata; tekst ophalen pas na rechtencontrole per item.
-- **Getest:** Niet live getest.
+- **Status:** gedeeltelijk — Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs bereikbaar met treffers; alleen catalogusgegevens en wisselende kwaliteit (bv. presentatiebestanden). Tekst pas na rechtencontrole per item.
+- **Getest:** 01-11-2026 live: 2× ok (metadata).
 
 ### Open Library
 
@@ -254,8 +256,8 @@ Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog)
 - **Kosten:** Gratis
 - **Technische uitvoerbaarheid:** Hoog
 - **Geschiktheid pilot:** Middel — bibliografische controle van boektitels
-- **Status:** gedeeltelijk — Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving).
-- **Getest:** Niet live getest.
+- **Status:** gedeeltelijk — Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs bereikbaar met treffers; alleen bibliografische gegevens.
+- **Getest:** 01-11-2026 live: 2× ok (metadata).
 
 ### Project Gutenberg (via Gutendex)
 
@@ -269,8 +271,8 @@ Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog)
 - **Kosten:** Gratis
 - **Technische uitvoerbaarheid:** Hoog voor metadata
 - **Geschiktheid pilot:** Laag-middel — weinig Bijbelcommentaren
-- **Status:** gedeeltelijk — Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving).
-- **Getest:** Niet live getest.
+- **Status:** gedeeltelijk — Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): Gutendex weigerde beide keren (HTTP 403) vanaf GitHub Actions; vanaf een thuisnetwerk nog niet getest.
+- **Getest:** 01-11-2026 live: 2× HTTP 403.
 
 ### Google Books
 
@@ -284,19 +286,19 @@ Statussen: **werkend** = gebouwd én getest · **gedeeltelijk** = gebouwd, (nog)
 - **Kosten:** Gratis binnen quotum
 - **Technische uitvoerbaarheid:** Hoog
 - **Geschiktheid pilot:** Middel — vindplaats; nooit inhoud kopiëren
-- **Status:** gedeeltelijk — Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving).
-- **Getest:** Niet live getest.
+- **Status:** gedeeltelijk — Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs HTTP 429 zonder sleutel. Alleen vindplaats; nooit inhoud kopiëren.
+- **Getest:** 01-11-2026 live: 2× HTTP 429.
 
 ### YouTube Data API v3 (ontdekken van preken en lezingen)
 
 - **Officiële website:** https://developers.google.com/youtube/v3
 - **Zoekmogelijkheden:** Zoeken op tekst (Bijbelgedeelte, thema, predikant), taalvoorkeur; titel, kanaal, beschrijving, datum, duur
-- **API's of datasets:** search.list (100 quota-eenheden per aanroep) + videos.list (1 eenheid); API-sleutel van Google Cloud
+- **API's of datasets:** search.list (1 eenheid per aanroep; standaard max. 100 zoekaanroepen/dag volgens documentatie 2026) + videos.list (1 eenheid); eigen Google Cloud API-sleutel
 - **Toegangsvoorwaarden:** YouTube API Services Terms; captions.download alleen met OAuth en (in de praktijk) voor eigen video's — niet voor willekeurige video's van derden
 - **Licentievoorwaarden:** Metadata via API; video-inhoud blijft van de maker
 - **Full-textgebruik:** Nee — transcript alleen via de gebruiker (eigen bestand/eigen kanaal)
 - **Actualiteit:** Actueel
-- **Kosten:** Gratis binnen dagquotum (standaard 10.000 eenheden ≈ 100 zoekopdrachten)
+- **Kosten:** Gratis binnen het standaardquotum: 100 search.list-aanroepen/dag en afzonderlijk 10.000 eenheden voor overige endpoints (2026; onder voorbehoud van wijzigingen)
 - **Technische uitvoerbaarheid:** Hoog voor metadata
 - **Geschiktheid pilot:** Hoog voor ontdekken; inhoudelijke analyse alleen met aangeleverd transcript
 - **Status:** gedeeltelijk — Werkt na invoer van een eigen sleutel; niet live getest in de ontwikkelomgeving. Relevantie zonder transcript = alleen op metadata.

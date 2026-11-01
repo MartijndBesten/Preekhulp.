@@ -6,7 +6,6 @@ import { BOEK_PER_NR, ontleedVkey } from "../../scripture/books";
 import { labelReeks } from "../../scripture/data";
 import type { BronRecord, Connector, ConnectorContext, Passage } from "../types";
 
-const NIET_LIVE = "Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving).";
 const opties = (ctx: ConnectorContext, dienst: string) => ({ db: ctx.db, onderzoek: ctx.onderzoek, dienst });
 const catalogus = (r: BronRecord): Passage[] => [{ soort: "metadata", locatie: "catalogusgegevens", tekst: `${r.titel}${r.auteurs.length ? " — " + r.auteurs.join(", ") : ""}${r.jaar ? ` (${r.jaar})` : ""}${r.uitgever ? `, ${r.uitgever}` : ""}`, url: r.url }];
 
@@ -18,7 +17,7 @@ export const internetArchive: Connector = {
     licentie: "Per item (licenseurl/rights); 'uitleenbaar' ≠ herbruikbaar", volledigeTekst: "Soms (publiek-domeinitems met tekstlaag)",
     actualiteit: "Continu", kosten: "Gratis", uitvoerbaarheid: "Middel (kwaliteit OCR wisselend)",
     geschiktheidPilot: "Middel — vindplaats voor oude commentaren (Keil-Delitzsch, Gill, Lange e.d.)",
-    status: "gedeeltelijk", statusToelichting: NIET_LIVE + " Alleen metadata; tekst ophalen pas na rechtencontrole per item.", getest: "Niet live getest.",
+    status: "gedeeltelijk", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs bereikbaar met treffers; alleen catalogusgegevens en wisselende kwaliteit (bv. presentatiebestanden). Tekst pas na rechtencontrole per item.", getest: "01-11-2026 live: 2× ok (metadata).",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "nee", verificatie: false, netwerk: true },
   nietBeschikbaar: () => null,
@@ -47,7 +46,7 @@ export const gutendex: Connector = {
     toegangsvoorwaarden: "Gutenberg: geen massale automatische downloads van gutenberg.org; gebruik mirrors/offline-catalogus",
     licentie: "Publiek domein in de VS; per land controleren (NL: 70 jaar na overlijden)", volledigeTekst: "Ja (tekstbestanden)",
     actualiteit: "Continu", kosten: "Gratis", uitvoerbaarheid: "Hoog voor metadata", geschiktheidPilot: "Laag-middel — weinig Bijbelcommentaren",
-    status: "gedeeltelijk", statusToelichting: NIET_LIVE, getest: "Niet live getest.",
+    status: "gedeeltelijk", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): Gutendex weigerde beide keren (HTTP 403) vanaf GitHub Actions; vanaf een thuisnetwerk nog niet getest.", getest: "01-11-2026 live: 2× HTTP 403.",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "nee", verificatie: false, netwerk: true },
   nietBeschikbaar: () => null,
@@ -72,7 +71,7 @@ export const openLibrary: Connector = {
     id: "openlibrary", naam: "Open Library", website: "https://openlibrary.org/", categorie: "Historische commentaren en boeken",
     zoekmogelijkheden: "Titel/auteur/onderwerp", api: "search.json", toegangsvoorwaarden: "Open; uitlenen ≠ hergebruik", licentie: "Catalogusdata CC0",
     volledigeTekst: "Nee (alleen via Internet Archive bij publiek domein)", actualiteit: "Continu", kosten: "Gratis", uitvoerbaarheid: "Hoog",
-    geschiktheidPilot: "Middel — bibliografische controle van boektitels", status: "gedeeltelijk", statusToelichting: NIET_LIVE, getest: "Niet live getest.",
+    geschiktheidPilot: "Middel — bibliografische controle van boektitels", status: "gedeeltelijk", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs bereikbaar met treffers; alleen bibliografische gegevens.", getest: "01-11-2026 live: 2× ok (metadata).",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "nee", verificatie: true, netwerk: true },
   nietBeschikbaar: () => null,
@@ -98,7 +97,7 @@ export const googleBooks: Connector = {
     zoekmogelijkheden: "Titel/auteur/trefwoord, ook binnen gedigitaliseerde boeken", api: "Books API v1 (volumes); sleutel optioneel",
     toegangsvoorwaarden: "Google API-voorwaarden; inhoud alleen bekijken via Google", licentie: "Inhoud niet herbruikbaar (behalve publiek domein-weergave)",
     volledigeTekst: "Nee (alleen beschrijving/fragmentweergave bij Google)", actualiteit: "Continu", kosten: "Gratis binnen quotum", uitvoerbaarheid: "Hoog",
-    geschiktheidPilot: "Middel — vindplaats; nooit inhoud kopiëren", status: "gedeeltelijk", statusToelichting: NIET_LIVE, getest: "Niet live getest.",
+    geschiktheidPilot: "Middel — vindplaats; nooit inhoud kopiëren", status: "gedeeltelijk", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs HTTP 429 zonder sleutel. Alleen vindplaats; nooit inhoud kopiëren.", getest: "01-11-2026 live: 2× HTTP 429.",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "nee", verificatie: true, netwerk: true },
   nietBeschikbaar: () => null,
@@ -163,7 +162,7 @@ export const helloAo: Connector = {
     toegangsvoorwaarden: "Vrij te gebruiken volgens aanbieder ('free use'); teksten zelf publiek domein", licentie: "Publiek domein (teksten)",
     volledigeTekst: "Ja (per vers)", actualiteit: "Statisch", kosten: "Gratis", uitvoerbaarheid: "Hoog",
     geschiktheidPilot: "Hoog — voegt Keil-Delitzsch toe (belangrijk exegetisch OT-commentaar)",
-    status: "gedeeltelijk", statusToelichting: NIET_LIVE + " URL-patroon afgeleid uit documentatie van een afgeleid project (Pillar Commentary Data).", getest: "Niet live getest.",
+    status: "werkend", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): vier commentaren gekoppeld (Keil-Delitzsch, Gill, Clarke, Jamieson-Fausset-Brown). Gill per vers; de andere drie per perikoop — dan toont Preekhulp de sectie die vóór het gevraagde vers begint, met de vermelding dat dat gecontroleerd moet worden.", getest: "01-11-2026 live: 4/4 commentaren leveren tekst bij Gen 31:13 (3 via perikoopsectie).",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "volledig", verificatie: true, netwerk: true },
   nietBeschikbaar: () => null,
