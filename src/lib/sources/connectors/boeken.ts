@@ -187,14 +187,29 @@ export const helloAo: Connector = {
             fouten.push((e as Error).message);
             continue;
           }
-          for (const it of j.chapter?.content ?? []) {
-            if (it.type !== "verse" || !it.number) continue;
-            const k = a.boek.nr * 1_000_000 + h * 1000 + it.number;
-            const van = h === a.hoofdstuk ? r.start : -Infinity;
-            const tot = h === b.hoofdstuk ? r.eind : Infinity;
+          const items = (j.chapter?.content ?? []).filter((it) => it.type === "verse" && it.number);
+          const tekstVan = (it: (typeof items)[number]) => (it.content ?? []).map((c) => (typeof c === "string" ? c : c.text ?? "")).join(" ").trim();
+          const van = h === a.hoofdstuk ? r.start : -Infinity;
+          const tot = h === b.hoofdstuk ? r.eind : Infinity;
+          let exact = 0;
+          for (const it of items) {
+            const k = a.boek.nr * 1_000_000 + h * 1000 + it.number!;
             if (k < van || k > tot) continue;
-            const tekst = (it.content ?? []).map((c) => (typeof c === "string" ? c : c.text ?? "")).join(" ").trim();
-            if (tekst) passages.push({ soort: "commentaar", locatie: labelReeks(k, k), tekst, url });
+            const tekst = tekstVan(it);
+            if (tekst) {
+              passages.push({ soort: "commentaar", locatie: labelReeks(k, k), tekst, url });
+              exact++;
+            }
+          }
+          // Veel commentaren (bv. Keil-Delitzsch) bespreken een perikoop onder het eerste vers. Geen exacte treffer?
+          // Neem dan de dichtstbijzijnde vóórgaande sectie, met een eerlijke vindplaats ("sectie vanaf …").
+          if (!exact && h === a.hoofdstuk) {
+            const vers = r.start % 1000;
+            const sectie = items.filter((it) => it.number! < vers).sort((x, y) => y.number! - x.number!)[0];
+            if (sectie && tekstVan(sectie)) {
+              const k = a.boek.nr * 1_000_000 + h * 1000 + sectie.number!;
+              passages.push({ soort: "commentaar", locatie: `${labelReeks(k, k)} e.v. (sectie; bespreekt mogelijk ook ${labelReeks(r.start, r.start)} — controleer)`, tekst: tekstVan(sectie), url });
+            }
           }
         }
       }

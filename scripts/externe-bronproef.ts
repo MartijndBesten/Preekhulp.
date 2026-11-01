@@ -72,6 +72,16 @@ try {
   const { helloAoIds } = await import("../src/lib/sources/connectors/boeken");
   const d2 = nieuweDb();
   console.log("HelloAO-commentaren gekoppeld:", JSON.stringify(Object.entries(await helloAoIds({ db: d2, instellingen: STANDAARD })).map(([id, m]) => `${id} = ${m.naam}`)));
+  // Diagnose: welke versnummers heeft elk commentaar bij Genesis 31 (per vers of per perikoop)?
+  const { haalJson } = await import("../src/lib/http/veilig");
+  for (const id of Object.keys(await helloAoIds({ db: d2, instellingen: STANDAARD }))) {
+    try {
+      const j = (await haalJson(`https://bible.helloao.org/api/c/${id}/GEN/31.json`, { db: d2, dienst: "helloao" })) as { chapter?: { content?: { type: string; number?: number }[] } };
+      console.log(`HelloAO ${id} Gen 31 versnummers:`, (j.chapter?.content ?? []).filter((x) => x.type === "verse").map((x) => x.number).join(","));
+    } catch (e) {
+      console.log(`HelloAO ${id} Gen 31: ${(e as Error).message}`);
+    }
+  }
   d2.close();
 } catch (e) {
   console.log("HelloAO-lijst niet opgehaald:", (e as Error).message);
