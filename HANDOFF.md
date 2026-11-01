@@ -1,6 +1,6 @@
 # HANDOFF — Preekhulp.
 
-**Status:** v0.1 gebouwd en lokaal getest (zonder echte AI); gekoppeld aan Denckh (makersvermelding + productpagina op branch, nog niet live); wacht op besluiten V-001 t/m V-006.
+**Status:** v0.1 gebouwd en lokaal getest (zonder echte AI); gekoppeld aan Denckh (makersvermelding + productpagina op branch, nog niet live); productpagina live op denckh.nl/preekhulp/; wacht op besluiten V-001 t/m V-004 en het restant van V-005.
 **Bijgewerkt:** 2026-11-01 ±13:00 UTC door Claude Code (cloudsessie).
 **Branch:** `claude/onderzoeksassistent-v0-1` (repository `MartijndBesten/Preekhulp.`, was leeg).
 **Volgende actor:** Martijn (vragen V-001 t/m V-005), daarna Claude Code.
@@ -51,13 +51,13 @@ Alles nieuw in deze repository: `package.json`, configuratie, `src/` (app en `li
 | Onderdeel | Besloten | Gebouwd | Bewezen |
 |---|---|---|---|
 | Makersvermelding in Preekhulp (footer: "Ontwikkeld door" + officiële signatuur met krul, licht/donker, link naar denckh.nl) volgens `bibliotheek/DENCKH_MERKVERMELDING.md` | ja (opdracht) | ja — logobestanden ongewijzigd gekopieerd uit `MartijndBesten/denckh` `public/brand/` | browsercontrole licht en donker; build geslaagd |
-| Productpagina `denckh.nl/preekhulp/` (repo `MartijndBesten/denckh`, branch `claude/preekhulp`, commit `96b98c9`, beslissing B-098, dossier `docs/cases/preekhulp.md`) | publicatie nog niet (O-44 daar / V-006 hier) | ja — zelfde opbouw als Ouderhulp., vier echte schermen, alleen geteste functies; AI-laag en externe bronnen als "proefronde" | typecheck, lint, build; e2e 21/21 nieuwe controles + interne links; volledige suite loopt vast op bekende homepagetest 320px (O-38 in denckh, ook zonder wijziging) |
+| Productpagina `denckh.nl/preekhulp/` (repo `MartijndBesten/denckh`, branch `claude/preekhulp`, commit `96b98c9`, beslissing B-098, dossier `docs/cases/preekhulp.md`) | ja — akkoord Martijn 01-11-2026 (V-006) | ja — zelfde opbouw als Ouderhulp., vier echte schermen, alleen geteste functies; AI-laag en externe bronnen als "proefronde" | typecheck, lint, build; e2e 21/21 nieuwe controles + interne links; volledige suite loopt vast op bekende homepagetest 320px (O-38 in denckh, ook zonder wijziging) |
 
-De makerslink wijst nu naar `https://denckh.nl/` (constante `DENCKH_URL` in `src/app/layout.tsx`); na publicatie omzetten naar `/preekhulp/`.
+Gepubliceerd op 01-11-2026: fast-forward van `main` in `MartijndBesten/denckh` naar `ccc2769` (GitHub Pages-run 54). De makerslink in Preekhulp wijst nu naar `https://denckh.nl/preekhulp/`.
 
 ## Open vragen
 
-V-001, V-002, V-003, V-004, V-005, V-006 (zie `VRAGEN.md`). V-005 is deels beantwoord door de opdracht "koppel het aan Denckh.nl" (Denckh als maker); licentie en registratie staan nog open.
+V-001, V-002, V-003, V-004, V-005 (deels) (zie `VRAGEN.md`). V-006 verwerkt. V-005 is deels beantwoord door de opdracht "koppel het aan Denckh.nl" (Denckh als maker); licentie en registratie staan nog open.
 
 ## Volgende stap
 

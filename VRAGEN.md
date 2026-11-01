@@ -119,15 +119,17 @@ Bepaalt bouwsteen-eigendom in de bibliotheek, eventuele makervermelding (Denckh-
 
 **Antwoord**
 
-Nog niet beantwoord.
+Deels: Martijn bevestigde op 01-11-2026 dat Preekhulp. een eigen product van Denckh is (zie V-006). Licentie en registratie in de workbench staan nog open.
 
 **Verwerkt in**
 
-Nog niet verwerkt.
+Makersvermelding en productpagina (V-006).
+
+## Beantwoorde en verwerkte vragen
 
 ### V-006 — Productpagina op denckh.nl publiceren?
 
-status: open
+status: verwerkt
 gesteld_door: claude
 datum: 2026-11-01
 
@@ -141,12 +143,9 @@ Publiceren op denckh.nl gebeurt alleen met akkoord van de eigenaar (CLAUDE.md va
 
 **Antwoord**
 
-Nog niet beantwoord.
+Martijn, 01-11-2026: "Ja live. Ja klopt. Voor nu goed." — publiceren, eigen product van Denckh, proefronde via info@denckh.nl, teksten akkoord.
 
 **Verwerkt in**
 
-Nog niet verwerkt.
+`MartijndBesten/denckh` `main` → `ccc2769` (B-098, O-44 afgehandeld); Preekhulp `src/app/layout.tsx` (makerslink naar /preekhulp/); `HANDOFF.md`.
 
-## Beantwoorde en verwerkte vragen
-
-Nog geen.

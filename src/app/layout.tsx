@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 
-/** Productpagina van Preekhulp. op denckh.nl. Tot die live staat: de homepage van Denckh. */
-const DENCKH_URL = "https://denckh.nl/";
+/** Productpagina van Preekhulp. op denckh.nl (live sinds 01-11-2026). */
+const DENCKH_URL = "https://denckh.nl/preekhulp/";
 
 export const metadata: Metadata = {
   title: "Preekhulp — onderzoeksassistent",
