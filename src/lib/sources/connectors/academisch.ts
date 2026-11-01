@@ -41,7 +41,7 @@ function oaNaarRecord(w: OaWork): BronRecord {
   const r: BronRecord = {
     connector: "openalex",
     extern_id: w.id,
-    brontype: w.type === "dissertation" ? "proefschrift" : w.type === "book" || w.type === "book-chapter" ? "wetenschappelijk boek/commentaar" : w.type === "article" ? "peer-reviewed artikel" : "onbekend",
+    brontype: w.type === "dissertation" ? "proefschrift" : w.type === "book" || w.type === "book-chapter" ? "wetenschappelijk boek/commentaar" : w.type === "article" ? "academisch artikel (peer review niet vastgesteld)" : "onbekend",
     titel: w.display_name ?? w.title ?? "(zonder titel)",
     auteurs: (w.authorships ?? []).map((a) => a.author?.display_name ?? "").filter(Boolean),
     jaar: w.publication_year ? String(w.publication_year) : null,
@@ -87,7 +87,7 @@ export const openAlex: Connector = {
   kaart: {
     id: "openalex", naam: "OpenAlex", website: "https://openalex.org/", categorie: "Academisch",
     zoekmogelijkheden: "Trefwoord, auteur, instelling, jaar, open access, type", api: "REST JSON (api.openalex.org/works)",
-    toegangsvoorwaarden: "Open; optioneel API-sleutel en contactadres (polite pool). Actuele sleutel-/kredietregels nog te controleren in docs.openalex.org.",
+    toegangsvoorwaarden: "Zonder sleutel beperkt gratis zoeken; gratis OpenAlex-API-sleutel aanbevolen voor structureel gebruik en paging. Dagbudget en tarieven actueel controleren via help.openalex.org.",
     licentie: "Metadata CC0", volledigeTekst: "Nee — alleen links naar open-accessversies",
     ...kaartBasis, geschiktheidPilot: "Hoog als vindplaats academische literatuur",
     status: "gedeeltelijk", statusToelichting: NIET_LIVE, getest: "Unit-test met vaste voorbeeldrespons (vorm), geen live-aanroep.",
@@ -159,7 +159,7 @@ export function crNaarRecord(it: CrItem): BronRecord {
   const abs = it.abstract ? it.abstract.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : null;
   return {
     connector: "crossref", extern_id: it.DOI,
-    brontype: it.type === "journal-article" ? "peer-reviewed artikel" : it.type?.startsWith("book") || it.type === "monograph" ? "wetenschappelijk boek/commentaar" : it.type === "dissertation" ? "proefschrift" : "onbekend",
+    brontype: it.type === "journal-article" ? "academisch artikel (peer review niet vastgesteld)" : it.type?.startsWith("book") || it.type === "monograph" ? "wetenschappelijk boek/commentaar" : it.type === "dissertation" ? "proefschrift" : "onbekend",
     titel: it.title?.[0] ?? "(zonder titel)",
     auteurs: (it.author ?? []).map((a) => a.name ?? [a.given, a.family].filter(Boolean).join(" ")).filter(Boolean),
     jaar: jaar ? String(jaar) : null, uitgever: it["container-title"]?.[0] ?? it.publisher ?? null,
@@ -227,7 +227,7 @@ export const semanticScholar: Connector = {
     const j = await haalJson<{ data?: S2[] }>(`https://api.semanticscholar.org/graph/v1/paper/search?${p}`, { ...opties(ctx, "semanticscholar"), headers: key ? { "x-api-key": key } : {} });
     return (j.data ?? []).map((s) => {
       const record: BronRecord = {
-        connector: "semanticscholar", extern_id: s.paperId, brontype: "peer-reviewed artikel", titel: s.title ?? "(zonder titel)",
+        connector: "semanticscholar", extern_id: s.paperId, brontype: "academisch artikel (peer review niet vastgesteld)", titel: s.title ?? "(zonder titel)",
         auteurs: (s.authors ?? []).map((a) => a.name ?? "").filter(Boolean), jaar: s.year ? String(s.year) : null, uitgever: s.venue || null,
         url: s.url ?? null, doi: s.externalIds?.DOI ?? null, samenvatting: s.abstract ?? null, toegang: s.abstract ? "abstract" : "alleen metadata",
         volledigeTekstUrl: s.openAccessPdf?.url ?? null,
@@ -256,7 +256,7 @@ export const core: Connector = {
     return (j.results ?? []).map((c) => {
       const display = c.links?.find((l) => l.type === "display")?.url ?? null;
       const record: BronRecord = {
-        connector: "core", extern_id: String(c.id), brontype: "peer-reviewed artikel", titel: c.title ?? "(zonder titel)",
+        connector: "core", extern_id: String(c.id), brontype: "academisch artikel (peer review niet vastgesteld)", titel: c.title ?? "(zonder titel)",
         auteurs: (c.authors ?? []).map((a) => a.name ?? "").filter(Boolean), jaar: c.yearPublished ? String(c.yearPublished) : null,
         uitgever: c.publisher ?? null, url: display ?? c.downloadUrl ?? null, doi: c.doi ?? null, taal: c.language?.code ?? null,
         samenvatting: c.abstract ?? null, toegang: c.abstract ? "abstract" : "alleen metadata", volledigeTekstUrl: c.downloadUrl ?? null,
