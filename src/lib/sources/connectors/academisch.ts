@@ -137,7 +137,7 @@ export const crossref: Connector = {
   ondersteunt: { zoeken: true, metadata: true, inhoud: "abstract", verificatie: true, netwerk: true },
   nietBeschikbaar: () => null,
   async zoek(v, ctx) {
-    const p = new URLSearchParams({ "query.bibliographic": v.tekst, rows: String(v.max ?? 10), select: "DOI,title,author,issued,container-title,publisher,abstract,URL,type,language,license" });
+    const p = new URLSearchParams({ "query.bibliographic": v.tekst, rows: String(v.max ?? 10), select: "DOI,title,author,issued,container-title,publisher,abstract,URL,type,license" });
     const mail = geheim("contactEmail");
     if (mail) p.set("mailto", mail);
     const j = await haalJson<{ message?: { items?: CrItem[] } }>(`https://api.crossref.org/works?${p}`, { ...opties(ctx, "crossref"), geheimeParams: ["mailto"] });
