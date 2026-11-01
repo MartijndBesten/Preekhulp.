@@ -9,7 +9,7 @@ import { ontleedVerwijzing } from "../scripture/reference";
 export interface ControleUitkomst {
   id: string;
   naam: string;
-  uitkomst: "werkt" | "fout" | "niet geconfigureerd" | "lokaal";
+  uitkomst: "werkt" | "geen treffers" | "fout" | "niet geconfigureerd" | "lokaal";
   resultaten: number;
   melding: string | null;
   ms: number;
@@ -28,7 +28,7 @@ export async function controleerBronnen(d: DatabaseSync): Promise<{ moment: stri
     }
     try {
       const r = await c.zoek({ tekst: c.kaart.id === "youtube" ? "Genesis 31 sermon Bethel" : "Bethel Jacob vow Genesis", refs, max: 3 }, ctx);
-      uitkomsten.push({ id: c.kaart.id, naam: c.kaart.naam, uitkomst: c.ondersteunt.netwerk ? (r.length ? "werkt" : "fout") : "lokaal", resultaten: r.length, melding: r.length ? null : "Geen resultaten op een proefvraag die resultaten zou moeten geven", ms: Date.now() - t0 });
+      uitkomsten.push({ id: c.kaart.id, naam: c.kaart.naam, uitkomst: c.ondersteunt.netwerk ? (r.length ? "werkt" : "geen treffers") : "lokaal", resultaten: r.length, melding: r.length ? null : "API-aanroep gelukt, maar de proefvraag gaf geen treffers; broninhoud niet bewezen", ms: Date.now() - t0 });
     } catch (e) {
       uitkomsten.push({ id: c.kaart.id, naam: c.kaart.naam, uitkomst: "fout", resultaten: 0, melding: (e as Error).message, ms: Date.now() - t0 });
     }
