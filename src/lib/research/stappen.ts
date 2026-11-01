@@ -604,7 +604,7 @@ export function bewaarBeweringen(c: RunCtx, e: UitvoerE, f: UitvoerF, cUit: Uitv
   const ins = c.d.prepare("INSERT INTO beweringen (id, onderzoek, sectie, tekst, niveau, voorgesteld_niveau, verwijzingen, controle, herkomst, perspectief, volgorde) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
   let teller = 0;
   const voeg = (sectie: string, b: BeweringT, herkomst: "ai" | "data", perspectief: string | null = null) => {
-    const k = controleer(b.niveau, b.verwijzingen, bewijs);
+    const k = controleer(b.niveau, b.verwijzingen, bewijs, b.tekst);
     teller++;
     ins.run(`C${teller}`, c.id, sectie, b.tekst, k.niveau, b.niveau, JSON.stringify(k.verwijzingen), JSON.stringify(k.controle), herkomst, perspectief, volgorde++);
   };

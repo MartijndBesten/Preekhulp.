@@ -25,6 +25,13 @@ describe("Claimcontrole", () => {
   it("berekende tekstdata telt als primair", () => {
     expect(controleer("direct_aangetoond", [{ label: "E4", citaat: null }], bewijs).niveau).toBe("direct_aangetoond");
   });
+  it("een AI-claim mag berekende data niet gebruiken als bewijs voor een andere stellige uitspraak", () => {
+    const wel = controleer("direct_aangetoond", [{ label: "E4" }], bewijs, bewijs.get("E4")!.tekst);
+    expect(wel.niveau).toBe("direct_aangetoond");
+    const niet = controleer("direct_aangetoond", [{ label: "E4" }], bewijs, "Jakob was twintig jaar ongelovig.");
+    expect(niet.niveau).toBe("mogelijke_onderzoekslijn");
+    expect(niet.controle.aangepast?.reden).toMatch(/Berekende data/);
+  });
   it("alleen abstract → hooguit mogelijke onderzoekslijn en gemarkeerd", () => {
     const k = controleer("onderbouwde_interpretatie", [{ label: "E3", citaat: null }], bewijs);
     expect(k.niveau).toBe("mogelijke_onderzoekslijn");

@@ -11,7 +11,7 @@ Lokaal draaiende webapplicatie die Bijbeltekst, grondtaaldata, historische comme
 
 ## Snel starten (Windows, macOS, Linux)
 
-Vereist: **Node.js 22.13 of nieuwer** (gebruikt de ingebouwde SQLite met FTS5) en ±1,5 GB vrije schijfruimte.
+Vereist: **Node.js 24 of nieuwer** (gebruikt de ingebouwde SQLite met FTS5) en ±1,5 GB vrije schijfruimte.
 
 ```bash
 npm install
@@ -27,7 +27,7 @@ Optioneel:
 - `npm run bronnen:controleren` — test alle externe bronnen live vanaf jouw computer.
 - `npm run evaluatie -- --modus verdiepen` — de Genesis 31-referentietest (zie `evaluatie/`).
 
-De melding *ExperimentalWarning: SQLite is an experimental feature* is onschuldig (Node-functie die in Node 22 nog zo heet).
+De melding *ExperimentalWarning: SQLite is an experimental feature* is onschuldig (Node-functie die in Node nog als experimenteel markeert).
 
 ## AI instellen (optioneel)
 
@@ -93,3 +93,9 @@ evaluatie/          Genesis 31-referentietest (invoer, criteria, afgeschermde re
 ## Attributie
 
 Grondtekstdata: STEP Bible (www.STEPBible.org), Tyndale House Cambridge — CC BY 4.0. Kruisverwijzingen: OpenBible.info — CC BY 4.0. Statenvertaling en Kanttekeningen: digitale editie Isidore-Guild — CC0. Berean Standard Bible — publiek domein. Calvijn (via CrossWire/CCEL, conversie Pillar Commentary Data, MIT). Matthew Henry (Markdown-editie lyteword, CC0).
+
+## Geautomatiseerde kwaliteitscontrole
+
+GitHub Actions controleert bij nieuwe commits op de ontwikkelbranches: TypeScript, de eenheidstests en de productiebuild met Node 24. Een aparte handmatig uit te voeren **academische API-proef** (`npm run bronnen:proef`) test echte netwerkresponses van OpenAlex, Crossref, de PThU-route en DOAJ. Die proef is bewust niet verplicht bij elke commit: gratis API-quota, met name OpenAlex HTTP 429, zouden anders de codekwaliteitstests onterecht laten mislukken. Een groene codebuild is géén bewijs dat een externe API altijd beschikbaar is.
+
+De lokale installatie vereist een Node-bouw met SQLite FTS5. De GitHub-run met Node 22.13 gaf `no such module: fts5`, met Node 24 is de reguliere testsuite en build wel geslaagd. Controleer FTS5 ook op Windows voordat de app breder wordt gedeeld.

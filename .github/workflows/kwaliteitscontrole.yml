@@ -1,0 +1,68 @@
+name: Preekhulp kwaliteitscontrole
+
+on:
+  push:
+    branches:
+      - 'claude/**'
+      - 'improve/**'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      volledige_brondata:
+        description: 'Haal de open Bijbel- en commentaardatasets op voor integratietests'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preekhulp-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code-en-bouw:
+    name: Types, eenheidstests en productiebuild
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  academische-api-proef:
+    name: Externe academische API-proef (zonder betaalde sleutels)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run bronnen:proef
+
+  met-open-brondata:
+    name: Volledige lokale Genesis 31-integratietest
+    if: github.event_name == 'workflow_dispatch' && inputs.volledige_brondata
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run data:ophalen
+      - run: npm run data:importeren
+      - run: npm test
+      - run: npm run evaluatie -- --modus verdiepen

@@ -47,10 +47,15 @@ export function vindDubbel(d: DatabaseSync, r: BronRecord): string | null {
     if (hit) return hit.id;
   }
   if (r.titel && r.jaar) {
-    const kandidaten = d.prepare("SELECT id, titel FROM bronnen WHERE jaar = ?").all(String(r.jaar)) as { id: string; titel: string }[];
-    const t = normaliseerTitel(r.titel);
-    const hit = kandidaten.find((k) => normaliseerTitel(k.titel) === t);
-    if (hit) return hit.id;
+    // Een gelijknamig werk uit hetzelfde jaar kan van een andere auteur zijn.
+    // Zonder auteursgegevens (of DOI/identieke URL hierboven) NIET automatisch samenvoegen.
+    const auteur = normaliseerTitel(r.auteurs[0] ?? "");
+    if (auteur) {
+      const kandidaten = d.prepare("SELECT id, titel, auteurs FROM bronnen WHERE jaar = ?").all(String(r.jaar)) as { id: string; titel: string; auteurs: string }[];
+      const t = normaliseerTitel(r.titel);
+      const hit = kandidaten.find((k) => normaliseerTitel(k.titel) === t && normaliseerTitel(json<string[]>(k.auteurs, [])[0] ?? "") === auteur);
+      if (hit) return hit.id;
+    }
   }
   return null;
 }

@@ -8,6 +8,7 @@ export type Brontype =
   | "bijbeltekst"
   | "grondtekst"
   | "peer-reviewed artikel"
+  | "academisch artikel (peer review niet vastgesteld)"
   | "wetenschappelijk boek/commentaar"
   | "historisch commentaar"
   | "historische kanttekeningen"

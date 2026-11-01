@@ -48,10 +48,10 @@ export const youtube: Connector = {
   kaart: {
     id: "youtube", naam: "YouTube Data API v3 (ontdekken van preken en lezingen)", website: "https://developers.google.com/youtube/v3", categorie: "Video en preken",
     zoekmogelijkheden: "Zoeken op tekst (Bijbelgedeelte, thema, predikant), taalvoorkeur; titel, kanaal, beschrijving, datum, duur",
-    api: "search.list (100 quota-eenheden per aanroep) + videos.list (1 eenheid); API-sleutel van Google Cloud",
+    api: "search.list (1 eenheid per aanroep; standaard max. 100 zoekaanroepen/dag volgens documentatie 2026) + videos.list (1 eenheid); eigen Google Cloud API-sleutel",
     toegangsvoorwaarden: "YouTube API Services Terms; captions.download alleen met OAuth en (in de praktijk) voor eigen video's — niet voor willekeurige video's van derden",
     licentie: "Metadata via API; video-inhoud blijft van de maker", volledigeTekst: "Nee — transcript alleen via de gebruiker (eigen bestand/eigen kanaal)",
-    actualiteit: "Actueel", kosten: "Gratis binnen dagquotum (standaard 10.000 eenheden ≈ 100 zoekopdrachten)", uitvoerbaarheid: "Hoog voor metadata",
+    actualiteit: "Actueel", kosten: "Gratis binnen het standaardquotum: 100 search.list-aanroepen/dag en afzonderlijk 10.000 eenheden voor overige endpoints (2026; onder voorbehoud van wijzigingen)", uitvoerbaarheid: "Hoog voor metadata",
     geschiktheidPilot: "Hoog voor ontdekken; inhoudelijke analyse alleen met aangeleverd transcript",
     status: "gedeeltelijk", statusToelichting: "Werkt na invoer van een eigen sleutel; niet live getest in de ontwikkelomgeving. Relevantie zonder transcript = alleen op metadata.",
     getest: "URL-herkenning, tijdlinks en transcriptimport getest (unit-tests); API-aanroep niet live getest.",
