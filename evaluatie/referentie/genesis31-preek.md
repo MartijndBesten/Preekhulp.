@@ -1,6 +1,6 @@
 # Beoordelingsreferentie — preek 1 november 2026 (PKN-doopdienst)
 
-> **Afgeschermd.** Dit bestand wordt alleen door `scripts/evaluatie.ts` gelezen, ná afloop van het onderzoek.
+> **Afgeschermd.** Dit bestand wordt alleen door `scripts/evaluatie-vergelijk.ts` gelezen, ná afloop van alle onderzoeksruns.
 > De onderzoekscode (`src/`) leest het nooit (gecontroleerd door `tests/onderzoek.test.ts`).
 > Bron: samenvatting door de opdrachtgever in de bouwopdracht.
 

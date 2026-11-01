@@ -264,7 +264,7 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
 
           <section id="homiletiek" className="kaart"><h2>11. Mogelijke homiletische verbindingen</h2><p className="zacht-tekst">Aanknopingspunten, geen preek. Toets elke toepassing aan de tekst.</p>{bw("homiletiek").length ? bw("homiletiek").map((b: X) => <Bewering key={b.id} b={b} />) : <p className="zacht-tekst">Geen AI-analyse uitgevoerd.</p>}</section>
 
-          <section id="vervolg" className="kaart"><h2>12. Openstaande vervolgvragen</h2><ul>{[...(x.e?.analyse?.open_vragen ?? []), ...Object.values(x.e?.perspectieven ?? {}).flatMap((p: X) => p.open_vragen), ...(x.g?.ai?.zoekvragen_tegenperspectief ?? []).map((q: string) => `Zoek tegenperspectief: ${q}`)].map((q: string, i: number) => <li key={i}>{q}</li>)}</ul></section>
+          <section id="vervolg" className="kaart"><h2>12. Openstaande vervolgvragen</h2><ul>{[...(x.e?.analyse?.open_vragen ?? []), ...Object.values(x.e?.perspectieven ?? {}).flatMap((p: X) => p.open_vragen), ...(x.g?.ai?.zoekvragen_tegenperspectief ?? []).map((q: string) => `Zoek tegenperspectief: ${q}`)].map((q: string, i: number) => <li key={i}>{q} <Link className="geen-print" href={`/?vraag=${encodeURIComponent(`${x.a?.focus ? `${x.a.refs[0]?.label ?? ""}. ` : ""}${q.replace(/^Zoek tegenperspectief: /, "")}`)}`} style={{ fontSize: 13 }}>onderzoek deze vraag →</Link></li>)}</ul></section>
 
           <section id="bronnen" className="kaart">
             <h2>13. Bronnen</h2>

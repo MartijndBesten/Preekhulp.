@@ -25,7 +25,8 @@ Ontwikkelen: `npm run dev`. Tests: `npm test`. Typecheck: `npm run typecheck`.
 Optioneel:
 - `npm run data:ophalen -- --met-kerkvaders` en `npm run data:kerkvaders` — kerkvaders-database (rechten van vertalingen onzeker; standaard uit, alleen eigen studie).
 - `npm run bronnen:controleren` — test alle externe bronnen live vanaf jouw computer.
-- `npm run evaluatie -- --modus verdiepen` — de Genesis 31-referentietest (zie `evaluatie/`).
+- `npm run bronnen:proef` — statusladder 1–4 voor alle netwerkbronnen (draait ook als handmatige GitHub Actions-job).
+- `npm run evaluatie -- --raming` en `npm run evaluatie -- --variant …` / `npm run evaluatie:vergelijk` — de blinde Genesis 31-test (zie `evaluatie/resultaten/README.md`; betaalde varianten alleen met `--akkoord`).
 
 De melding *ExperimentalWarning: SQLite is an experimental feature* is onschuldig (Node-functie die in Node nog als experimenteel markeert).
 
@@ -35,13 +36,15 @@ Zonder AI werken tekst & grondtaal, commentaren, bronzoeken, eigen bibliotheek e
 
 | Aanbieder | Wat nodig | Kosten |
 |---|---|---|
-| Anthropic (Claude) | Eigen API-sleutel (console.anthropic.com), bij voorkeur in een eigen workspace met bestedingslimiet | Per token; standaardmodel Claude Opus 5.5 ($4 / $20 per miljoen tokens in/uit). Sonnet 5.5 en Haiku 5.5 zijn goedkoper |
+| Anthropic (Claude) — **primair** | Eigen API-sleutel (console.anthropic.com) in een aparte workspace met bestedingslimiet (voorstel $10/maand) | Per token; standaard **Sonnet 5.5** ($2 / $10 per miljoen tokens in/uit), keuze **Opus 5.5** ($4 / $20). Prijzen gecontroleerd 01-11-2026 |
 | OpenAI | API-sleutel, model-id en de actuele prijzen (zelf invullen) | Per token |
-| Ollama | Lokaal geïnstalleerd model | Gratis, kwaliteit afhankelijk van model en hardware |
+| Ollama | Lokaal geïnstalleerd model | Gratis, kwaliteit afhankelijk van model en hardware (voorlopig geen prioriteit) |
 
 Preekhulp gebruikt **nooit** het Claude Code-abonnement. Sleutels staan in `.data/geheimen.local.json` (buiten Git) of in omgevingsvariabelen (`.env.voorbeeld`).
 
-Berekende bovengrens per onderzoek (alle invoer + volledig uitvoermaximum per AI-stap): Opus 5.5 — Verkennen $0,29 · Verdiepen $1,10 · Kritisch $3,23; Sonnet 5.5 ongeveer de helft; Haiku 5.5 enkele centen. Werkelijke kosten zijn lager en worden per stap vastgelegd. Standaardbudget per onderzoek: $1,50 (instelbaar; voor Kritisch met Opus verhogen). Een stap die het resterende budget zou overschrijden, wordt vóór de aanroep geweigerd.
+Berekende bovengrens per onderzoek (alle invoer + volledig uitvoermaximum per AI-stap, incl. verdiepingsronde): Verdiepen — Sonnet $0,68 · Opus $1,36; Kritisch — Sonnet $1,76 · Opus $3,53. Werkelijke kosten zijn lager en worden per stap vastgelegd. Standaard: onderzoekslimiet $1,50, maandbudget $10. Een stap die het resterende budget zou overschrijden, wordt vóór de aanroep geweigerd; Preekhulp schakelt nooit zelf over naar een duurder model.
+
+In **Instellingen** zie je de toestand van de verbinding (sleutel ontbreekt · aanwezig, niet getest · getest en werkend · authenticatiefout · quotum of budget bereikt · model niet beschikbaar · netwerk niet bereikbaar) en kun je de verbinding **gratis testen** (alleen modelinformatie, geen tekstgeneratie). Ontwerp voor latere door Denckh beheerde toegang: [`docs/AI_GATEWAY.md`](docs/AI_GATEWAY.md).
 
 ## Bronnen in één oogopslag
 
@@ -53,13 +56,13 @@ Volledig overzicht met licenties en teststatus: [`docs/BRONKAARTEN.md`](docs/BRO
 | Grondtekst | STEPBible TAHOT/TAGNT + TBESH/TBESG (CC BY 4.0) | werkend, lokaal |
 | Kruisverwijzingen | OpenBible.info (CC BY) | werkend, lokaal |
 | Historische uitleg | Kanttekeningen SV (1637), Calvijn, Matthew Henry (PD) · optioneel kerkvaders | werkend, lokaal |
-| Extra commentaren | HelloAO: Keil-Delitzsch, Gill, Clarke, JFB (PD) | gebouwd, niet live getest |
-| Academisch | OpenAlex, PThU (via OpenAlex), Crossref, DOAJ, Semantic Scholar, CORE (sleutel), Unpaywall | gebouwd, niet live getest |
-| Boeken | Internet Archive, Open Library, Gutenberg, Google Books (alleen catalogus) | gebouwd, niet live getest |
-| Video | YouTube Data API (metadata; eigen sleutel) + eigen transcripten (SRT/VTT) met tijdlinks | gebouwd; transcriptimport getest |
+| Extra commentaren | HelloAO: Keil-Delitzsch, Gill, Clarke, JFB (PD) | werkend (live getest 01-11-2026; Gill per vers, andere drie per perikoop) |
+| Academisch | Crossref, DOAJ (werkend) · OpenAlex (wisselend HTTP 429 zonder sleutel) · PThU via OpenAlex (bereikbaar) · Semantic Scholar (429) · CORE (sleutel, niet getest) · Unpaywall | live getest 01-11-2026, zie bronkaarten |
+| Boeken | Internet Archive, Open Library (werkend, alleen catalogus) · Gutenberg (403) · Google Books (429) | live getest 01-11-2026 |
+| Video | Zonder sleutel: linkherkenning (ook in de onderzoeksvraag), zoeklinks, eigen transcripten (SRT/VTT/TXT) met tijdlinks, zoeken en vergelijken · met eigen sleutel: YouTube Data API (metadata) | zonder-sleutel-deel getest; API niet getest (geen sleutel) |
 | Doorverwijzing | Logos (ref.ly), BibleHub, Blue Letter Bible, NET Bible, STEP, Google Scholar, PThU/TUU/VU/Radboud | links |
 
-**Waarom 'niet live getest'?** De ontwikkelomgeving (cloudsessie) blokkeerde deze hosts. De connectors volgen de bekende API-vormen en hebben vormtests, maar zijn pas bewezen na `npm run bronnen:controleren` op een computer met gewoon internet.
+**Live getest via GitHub Actions** (01-11-2026, twee runs). Statusladder per gevonden bron in een dossier: 1 bereikbaar · 2 zoekopdracht gelukt · 3 relevant · 4 volledige inhoud · 5 geanalyseerd · 6 citaat geverifieerd. Een catalogusvermelding is nooit basis voor een inhoudelijke samenvatting.
 
 ## Bewust níet gedaan
 
