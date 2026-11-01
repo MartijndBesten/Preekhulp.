@@ -173,4 +173,8 @@ export const MIGRATIES: string[] = [
   `
   ALTER TABLE onderzoek_bewijs ADD COLUMN naar_ai INTEGER NOT NULL DEFAULT 0;
   `,
+  // 4: extractiewaarschuwingen per document (gescande pagina's, tabellen, paginanummering).
+  `
+  ALTER TABLE documenten ADD COLUMN waarschuwingen TEXT NOT NULL DEFAULT '[]';
+  `,
 ];

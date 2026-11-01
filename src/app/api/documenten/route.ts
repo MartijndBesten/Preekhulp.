@@ -9,9 +9,9 @@ export async function GET(req: Request) {
   return route(req, () => {
     const d = db();
     const q = new URL(req.url).searchParams.get("q");
-    const lijst = d.prepare("SELECT id, project, titel, bestandsnaam, soort, grootte, paginas, auteur, jaar, video_id, transcript_soort, gemaakt, (SELECT COUNT(*) FROM document_delen WHERE document = documenten.id) AS delen FROM documenten ORDER BY gemaakt DESC").all();
+    const lijst = d.prepare("SELECT id, project, titel, bestandsnaam, soort, grootte, paginas, auteur, jaar, video_id, transcript_soort, gemaakt, waarschuwingen, (SELECT COUNT(*) FROM document_delen WHERE document = documenten.id) AS delen FROM documenten ORDER BY gemaakt DESC").all();
     const treffers = q
-      ? d.prepare(`SELECT dd.document, dd.locatie, dd.start_sec, snippet(document_delen_fts, 0, '[', ']', '…', 24) fragment, doc.titel, doc.video_id
+      ? d.prepare(`SELECT dd.document, dd.locatie, dd.pagina, dd.start_sec, snippet(document_delen_fts, 0, '[', ']', '…', 24) fragment, doc.titel, doc.video_id, doc.soort
                    FROM document_delen_fts JOIN document_delen dd ON dd.id = document_delen_fts.rowid JOIN documenten doc ON doc.id = dd.document
                    WHERE document_delen_fts MATCH ? ORDER BY rank LIMIT 50`).all(ftsVraag(q, "of") || '""')
       : [];

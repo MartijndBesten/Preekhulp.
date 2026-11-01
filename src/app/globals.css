@@ -34,7 +34,7 @@ button.gevaar { background: var(--fout-bg); color: var(--fout); }
 button:disabled { opacity: .5; cursor: default; }
 .rij { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .zacht-tekst { color: var(--zacht); font-size: 14px; }
-.melding { padding: 10px 12px; border-radius: 8px; background: var(--waarschuw-bg); color: var(--waarschuw); font-size: 14px; margin: 8px 0; }
+.melding { white-space: pre-line; padding: 10px 12px; border-radius: 8px; background: var(--waarschuw-bg); color: var(--waarschuw); font-size: 14px; margin: 8px 0; }
 .melding.fout { background: var(--fout-bg); color: var(--fout); }
 .melding.info { background: var(--accent-zacht); color: var(--tekst); }
 .label { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }

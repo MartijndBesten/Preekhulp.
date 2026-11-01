@@ -195,7 +195,7 @@ export const eigenDocumenten: Connector = {
     geschiktheidPilot: "Hoog",
     status: "werkend",
     statusToelichting: "Standaard privé: inhoud gaat niet naar een AI-aanbieder, tenzij dat in Instellingen is toegestaan.",
-    getest: "01-11-2026: upload TXT/MD/SRT/VTT/DOCX/PDF, zoeken, verwijderen (zie tests).",
+    getest: "01-11-2026: echte testbestanden (PDF tekst/meerdere pagina's/voetnoten/twee kolommen/scan; DOCX koppen/tabel/voetnoten), zoeken, origineel openen, verwijderen — tests/documenten-echt.test.ts.",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "volledig", verificatie: true, netwerk: false },
   nietBeschikbaar: () => null,
@@ -204,12 +204,12 @@ export const eigenDocumenten: Connector = {
     if (!q) return [];
     const hits = ctx.db
       .prepare(
-        `SELECT dd.document, dd.locatie, dd.start_sec, dd.eind_sec, snippet(document_delen_fts, 0, '[', ']', '…', 30) fragment,
+        `SELECT dd.document, dd.locatie, dd.pagina, dd.start_sec, dd.eind_sec, snippet(document_delen_fts, 0, '[', ']', '…', 30) fragment,
                 d.titel, d.auteur, d.jaar, d.soort, d.video_id
          FROM document_delen_fts JOIN document_delen dd ON dd.id = document_delen_fts.rowid JOIN documenten d ON d.id = dd.document
          WHERE document_delen_fts MATCH ? ORDER BY rank LIMIT ?`,
       )
-      .all(q, v.max ?? 20) as { document: string; locatie: string; start_sec: number | null; eind_sec: number | null; fragment: string; titel: string; auteur: string | null; jaar: string | null; soort: string; video_id: string | null }[];
+      .all(q, v.max ?? 20) as { document: string; locatie: string; pagina: number | null; start_sec: number | null; eind_sec: number | null; fragment: string; titel: string; auteur: string | null; jaar: string | null; soort: string; video_id: string | null }[];
     const per = new Map<string, { record: BronRecord; passages: Passage[] }>();
     for (const h of hits) {
       if (!per.has(h.document))
@@ -219,7 +219,7 @@ export const eigenDocumenten: Connector = {
         });
       per.get(h.document)!.passages.push({
         soort: h.video_id ? "transcript" : "document", locatie: h.locatie, tekst: h.fragment,
-        url: h.video_id && h.start_sec != null ? `https://www.youtube.com/watch?v=${h.video_id}&t=${Math.floor(h.start_sec)}s` : null,
+        url: h.video_id && h.start_sec != null ? `https://www.youtube.com/watch?v=${h.video_id}&t=${Math.floor(h.start_sec)}s` : `/api/documenten/${h.document}/bestand${h.soort === "pdf" && h.pagina ? `#page=${h.pagina}` : ""}`,
         start_sec: h.start_sec, eind_sec: h.eind_sec,
       });
     }

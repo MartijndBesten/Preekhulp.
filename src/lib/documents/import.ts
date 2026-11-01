@@ -106,22 +106,84 @@ export function splitsTekst(tekst: string, soort: "txt" | "md"): Deel[] {
   return delen;
 }
 
-export async function extraheer(soort: Soort, buf: Buffer): Promise<{ delen: Deel[]; paginas: number | null }> {
+function htmlNaarTekst(h: string): string {
+  return h
+    // binnen tabelcellen: alinea's samenvoegen, zodat een rij één regel "cel | cel" wordt
+    .replace(/<t([dh])([^>]*)>([\s\S]*?)<\/t\1>/gi, (_m, _t, _a, c: string) => `<td>${c.replace(/<\/p>\s*<p[^>]*>/gi, " ").replace(/<\/?p[^>]*>/gi, "")}</td>`)
+    .replace(/<\/t[dh]>\s*(?=<\/tr>)/gi, "")
+    .replace(/<\/t[dh]>/gi, " | ")
+    .replace(/<\/(p|li|h[1-6]|tr)>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<a [^>]*href="#footnote-ref-[^"]*"[^>]*>.*?<\/a>/gi, "")
+    .replace(/<sup><a [^>]*>\[(\d+)\]<\/a><\/sup>/gi, "[$1]")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ")
+    .replace(/ \| \n/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s*\n+/g, "\n")
+    .trim();
+}
+
+/** DOCX via HTML (mammoth): secties per kop, tabelrijen als "cel | cel", voetnoten als aparte sectie. */
+export function docxHtmlNaarDelen(html: string): Deel[] {
+  const delen: Deel[] = [];
+  let voetnoten = "";
+  const vn = /<ol>(\s*<li id="(?:footnote|endnote)-[\s\S]*?)<\/ol>\s*$/i.exec(html);
+  if (vn) {
+    voetnoten = htmlNaarTekst(vn[1].replace(/<li id="(?:footnote|endnote)-[^"]*">/gi, "\n• "));
+    html = html.slice(0, vn.index);
+  }
+  const stukken = html.split(/(?=<h[1-6][^>]*>)/i);
+  let pad: string[] = [];
+  for (const st of stukken) {
+    const kop = /^<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/i.exec(st);
+    let titel = "begin";
+    let rest = st;
+    if (kop) {
+      const niveau = Number(kop[1]);
+      pad = [...pad.slice(0, niveau - 1), htmlNaarTekst(kop[2]).slice(0, 120)];
+      titel = pad.filter(Boolean).join(" › ");
+      rest = st.slice(kop[0].length);
+    }
+    const tekst = htmlNaarTekst(rest);
+    if (tekst) for (const d of splitsTekst(tekst, "txt")) delen.push({ ...d, locatie: d.locatie === "begin" ? `sectie: ${titel}` : `sectie: ${titel} ${d.locatie.replace("begin", "").trim()}` });
+    else if (kop) delen.push({ locatie: `sectie: ${titel}`, tekst: titel });
+  }
+  if (voetnoten) delen.push({ locatie: "voetnoten", tekst: voetnoten });
+  return delen;
+}
+
+export interface Extractie {
+  delen: Deel[];
+  paginas: number | null;
+  waarschuwingen: string[];
+}
+
+export async function extraheer(soort: Soort, buf: Buffer): Promise<Extractie> {
+  const waarschuwingen: string[] = [];
   if (soort === "pdf") {
     const { extractText, getDocumentProxy } = await import("unpdf");
     const pdf = await getDocumentProxy(new Uint8Array(buf));
     const { totalPages, text } = await extractText(pdf, { mergePages: false });
     const paginas = (Array.isArray(text) ? text : [text]).map((t, i) => ({ locatie: `p. ${i + 1}`, pagina: i + 1, tekst: String(t).replace(/\s+\n/g, "\n").trim() }));
-    return { delen: paginas.filter((p) => p.tekst), paginas: totalPages };
+    const leeg = paginas.filter((p) => p.tekst.length < 20).map((p) => p.pagina);
+    if (leeg.length && leeg.length < paginas.length) waarschuwingen.push(`Pagina ${leeg.join(", ")} bevat (bijna) geen tekstlaag — mogelijk gescand; die pagina's zijn niet doorzoekbaar (OCR wordt niet ondersteund).`);
+    waarschuwingen.push("Paginanummers zijn de volgorde in het PDF-bestand; die kan afwijken van de gedrukte paginanummering.");
+    if (paginas.some((p) => /\n\d{1,2} [A-Z]/.test(p.tekst))) waarschuwingen.push("Voetnoten staan als gewone tekst onderaan de pagina in de zoekindex.");
+    return { delen: paginas.filter((p) => p.tekst.length >= 20), paginas: totalPages, waarschuwingen };
   }
   if (soort === "docx") {
     const mammoth = await import("mammoth");
-    const r = await mammoth.extractRawText({ buffer: buf });
-    return { delen: splitsTekst(r.value, "txt").map((d, i) => ({ ...d, locatie: `sectie ${i + 1}` })), paginas: null };
+    const r = await mammoth.convertToHtml({ buffer: buf });
+    const html = r.value;
+    if (/<table/i.test(html)) waarschuwingen.push("Tabellen zijn als rijen 'cel | cel' opgenomen.");
+    if (/<img/i.test(html)) waarschuwingen.push("Afbeeldingen in het document zijn niet doorzoekbaar.");
+    waarschuwingen.push("Word-documenten hebben geen vaste paginanummers; vindplaats = kop/sectie.");
+    return { delen: docxHtmlNaarDelen(html), paginas: null, waarschuwingen };
   }
   const tekst = buf.toString("utf8");
-  if (soort === "srt" || soort === "vtt") return { delen: parseOndertitels(tekst), paginas: null };
-  return { delen: splitsTekst(tekst, soort), paginas: null };
+  if (soort === "srt" || soort === "vtt") return { delen: parseOndertitels(tekst), paginas: null, waarschuwingen };
+  return { delen: splitsTekst(tekst, soort), paginas: null, waarschuwingen };
 }
 
 export interface NieuwDocument {
@@ -134,7 +196,7 @@ export interface NieuwDocument {
   transcriptSoort?: "automatisch" | "handmatig" | "onbekend";
 }
 
-export async function importeerDocument(d: DatabaseSync, bestandsnaam: string, buf: Buffer, meta: NieuwDocument): Promise<{ id: string; duplicaat: boolean; delen: number }> {
+export async function importeerDocument(d: DatabaseSync, bestandsnaam: string, buf: Buffer, meta: NieuwDocument): Promise<{ id: string; duplicaat: boolean; delen: number; waarschuwingen?: string[] }> {
   if (buf.length === 0) throw new DocumentFout("Leeg bestand.");
   if (buf.length > MAX_BYTES) throw new DocumentFout(`Bestand is groter dan ${MAX_BYTES / 1024 / 1024} MB.`);
   const veiligeNaam = path.basename(bestandsnaam).replace(/[^\p{L}\p{N}._ -]/gu, "_").slice(0, 160);
@@ -142,20 +204,20 @@ export async function importeerDocument(d: DatabaseSync, bestandsnaam: string, b
   const sha = createHash("sha256").update(buf).digest("hex");
   const bestaand = d.prepare("SELECT id FROM documenten WHERE sha256 = ?").get(sha) as { id: string } | undefined;
   if (bestaand) return { id: bestaand.id, duplicaat: true, delen: 0 };
-  let ex: Awaited<ReturnType<typeof extraheer>>;
+  let ex: Extractie;
   try {
     ex = await extraheer(soort, buf);
   } catch (e) {
     throw new DocumentFout(`Tekst kon niet worden gelezen: ${(e as Error).message}`);
   }
-  if (!ex.delen.length) throw new DocumentFout("Geen tekst gevonden (gescande PDF zonder tekstlaag?).");
+  if (!ex.delen.length) throw new DocumentFout(soort === "pdf" ? "Deze PDF heeft geen tekstlaag (waarschijnlijk gescand). Preekhulp kan nog geen tekstherkenning (OCR) doen; gebruik een PDF met tekst of plak de tekst als .txt." : "Geen tekst gevonden in dit bestand.");
   const videoId = meta.videoUrl ? videoIdUitUrl(meta.videoUrl) : null;
   if (meta.videoUrl && !videoId) throw new DocumentFout("De opgegeven video-URL is geen herkenbare YouTube-link.");
   const id = nieuweId("d");
   transactie(d, () => {
     d.prepare(
-      "INSERT INTO documenten (id, project, titel, bestandsnaam, soort, sha256, grootte, paginas, auteur, jaar, bronvermelding, prive, video_id, transcript_soort, gemaakt) VALUES (?,?,?,?,?,?,?,?,?,?,?,1,?,?,?)",
-    ).run(id, meta.project ?? null, (meta.titel || veiligeNaam).slice(0, 300), veiligeNaam, soort, sha, buf.length, ex.paginas, meta.auteur ?? null, meta.jaar ?? null, meta.bronvermelding ?? null, videoId, videoId ? meta.transcriptSoort ?? "onbekend" : null, nu());
+      "INSERT INTO documenten (id, project, titel, bestandsnaam, soort, sha256, grootte, paginas, auteur, jaar, bronvermelding, prive, video_id, transcript_soort, gemaakt, waarschuwingen) VALUES (?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)",
+    ).run(id, meta.project ?? null, (meta.titel || veiligeNaam).slice(0, 300), veiligeNaam, soort, sha, buf.length, ex.paginas, meta.auteur ?? null, meta.jaar ?? null, meta.bronvermelding ?? null, videoId, videoId ? meta.transcriptSoort ?? "onbekend" : null, nu(), JSON.stringify(ex.waarschuwingen));
     const ins = d.prepare("INSERT INTO document_delen (document, volgorde, locatie, pagina, start_sec, eind_sec, tekst) VALUES (?,?,?,?,?,?,?)");
     const fts = d.prepare("INSERT INTO document_delen_fts (rowid, tekst) VALUES (?, ?)");
     ex.delen.forEach((dl, i) => {
@@ -166,7 +228,7 @@ export async function importeerDocument(d: DatabaseSync, bestandsnaam: string, b
   const map = path.join(dataDir(), "uploads");
   fs.mkdirSync(map, { recursive: true });
   fs.writeFileSync(path.join(map, `${id}.${soort}`), buf, { mode: 0o600 });
-  return { id, duplicaat: false, delen: ex.delen.length };
+  return { id, duplicaat: false, delen: ex.delen.length, waarschuwingen: ex.waarschuwingen };
 }
 
 /** Verwijdert document, delen, zoekindex, samenvattingen en het opgeslagen bestand. */
