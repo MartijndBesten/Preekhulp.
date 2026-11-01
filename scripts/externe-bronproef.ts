@@ -68,6 +68,14 @@ try {
 }
 
 for (const u of uitkomsten) console.log(JSON.stringify(u));
+try {
+  const { helloAoIds } = await import("../src/lib/sources/connectors/boeken");
+  const d2 = nieuweDb();
+  console.log("HelloAO-commentaren gekoppeld:", JSON.stringify(Object.entries(await helloAoIds({ db: d2, instellingen: STANDAARD })).map(([id, m]) => `${id} = ${m.naam}`)));
+  d2.close();
+} catch (e) {
+  console.log("HelloAO-lijst niet opgehaald:", (e as Error).message);
+}
 const bereikt = uitkomsten.filter((u) => u.ladder["1_api_bereikbaar"]).length;
 const geprobeerd = uitkomsten.filter((u) => u.status !== "niet geconfigureerd").length;
 console.log(`\nResultaat: ${bereikt}/${geprobeerd} geprobeerde API's bereikbaar; ${uitkomsten.filter((u) => u.ladder["3_relevante_bron"]).length} met relevante treffer; ${uitkomsten.filter((u) => u.ladder["4_volledige_inhoud"]).length} met volledige inhoud. Geen beoordeling van exegetische inhoud.`);

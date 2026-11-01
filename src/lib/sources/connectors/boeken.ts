@@ -131,6 +131,31 @@ export const HELLOAO_COMMENTAREN: Record<string, { naam: string; jaar: string; t
   "jamieson-fausset-brown": { naam: "Jamieson, Fausset & Brown, Commentary", jaar: "1871", traditie: "protestants (Schots/Engels)" },
 };
 
+/**
+ * Vraag de werkelijk beschikbare commentaar-id's op (live proef 01-11-2026: met vaste id's gaf alleen John Gill treffers).
+ * Koppel op naam aan de bekende publiek-domeinwerken; onbekende werken worden niet gebruikt.
+ */
+const PATRONEN: [RegExp, { naam: string; jaar: string; traditie: string }][] = [
+  [/keil|delitzsch/i, HELLOAO_COMMENTAREN["keil-delitzsch"]],
+  [/gill/i, HELLOAO_COMMENTAREN["john-gill"]],
+  [/clarke/i, HELLOAO_COMMENTAREN["adam-clarke"]],
+  [/jamieson|fausset/i, HELLOAO_COMMENTAREN["jamieson-fausset-brown"]],
+];
+export async function helloAoIds(ctx: ConnectorContext): Promise<Record<string, { naam: string; jaar: string; traditie: string }>> {
+  try {
+    const j = await haalJson<{ commentaries?: { id: string; name?: string; englishName?: string }[] }>("https://bible.helloao.org/api/available_commentaries.json", { ...opties(ctx, "helloao"), cacheSeconden: 7 * 24 * 3600 });
+    const uit: Record<string, { naam: string; jaar: string; traditie: string }> = {};
+    for (const c of j.commentaries ?? []) {
+      const naam = `${c.id} ${c.name ?? ""} ${c.englishName ?? ""}`;
+      const hit = PATRONEN.find(([re]) => re.test(naam));
+      if (hit) uit[c.id] = hit[1];
+    }
+    return Object.keys(uit).length ? uit : HELLOAO_COMMENTAREN;
+  } catch {
+    return HELLOAO_COMMENTAREN;
+  }
+}
+
 export const helloAo: Connector = {
   kaart: {
     id: "helloao", naam: "HelloAO Free Use Bible API — publiek-domeincommentaren", website: "https://bible.helloao.org/", categorie: "Historische commentaren en boeken",
@@ -146,7 +171,7 @@ export const helloAo: Connector = {
     if (!v.refs?.length) return [];
     const uit: { record: BronRecord; passages: Passage[] }[] = [];
     const fouten: string[] = [];
-    for (const [id, meta] of Object.entries(HELLOAO_COMMENTAREN)) {
+    for (const [id, meta] of Object.entries(await helloAoIds(ctx))) {
       const passages: Passage[] = [];
       for (const r of v.refs.slice(0, 3)) {
         const a = ontleedVkey(r.start);
