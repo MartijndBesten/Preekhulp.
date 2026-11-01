@@ -27,12 +27,12 @@ export interface Instellingen {
 
 export const STANDAARD: Instellingen = {
   aiAanbieder: "geen",
-  anthropicModel: "claude-opus-5-5",
+  anthropicModel: "claude-sonnet-5-5", // goedkoper; Opus is een bewuste keuze per instelling
   openaiModel: "",
   ollamaModel: "",
   inspanning: "medium",
   budgetPerOnderzoekUsd: 1.5,
-  maandbudgetUsd: 20,
+  maandbudgetUsd: 10, // voorgestelde limiet; geen toestemming om kosten te maken
   voorkeursauteurs: [],
   tradities: ["gereformeerd", "protestants"],
   uitgeschakeldeConnectors: [],
