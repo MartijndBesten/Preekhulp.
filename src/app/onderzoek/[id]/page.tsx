@@ -27,6 +27,8 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
   const [projecten, setProjecten] = useState<{ id: string; titel: string }[]>([]);
   const [markeringen, setMarkeringen] = useState<Record<string, string>>({});
   const [verdiep, setVerdiep] = useState<{ stap: string; extra: string } | null>(null);
+  const [hoofd, setHoofd] = useState<X | null>(null);
+  const [hoofdBezig, setHoofdBezig] = useState(false);
   const [filter, setFilter] = useState<{ type: string; toegang: string; alleenGeverifieerd: boolean }>({ type: "", toegang: "", alleenGeverifieerd: false });
 
   const laad = useCallback(async () => {
@@ -64,6 +66,17 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
     await fetch(`/api/onderzoek/${id}/stap`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stap, extra }) });
     setVerdiep(null);
     setTimeout(laad, 500);
+  }
+  async function overHetHoofd(metAi = false) {
+    setHoofdBezig(true);
+    const r = metAi
+      ? await fetch(`/api/onderzoek/${id}/overhoofd`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ai: true, akkoordRamingUsd: hoofd?.aiMogelijk?.ramingUsd }) })
+      : await fetch(`/api/onderzoek/${id}/overhoofd`);
+    const j = await r.json();
+    setHoofdBezig(false);
+    if (!r.ok) return setHoofd({ ...(hoofd ?? { signalen: [] }), fout: j.fout });
+    setHoofd(j);
+    if (metAi) laad();
   }
   async function markeer(bron: string, markering: string) {
     if (!project) return;
@@ -125,6 +138,21 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
         <label style={{ margin: 0 }}>Project voor bronmarkeringen:</label>
         <select value={project} onChange={(e) => setProject(e.target.value)} style={{ width: "auto" }}><option value="">— kies project —</option>{projecten.map((p) => <option key={p.id} value={p.id}>{p.titel}</option>)}</select>
       </div>
+
+      {!bezig && <div className="kaart geen-print" id="overhoofd">
+        <div className="rij" style={{ justifyContent: "space-between" }}><h2 style={{ margin: 0 }}>Wat zie ik over het hoofd?</h2>{!hoofd && <button onClick={() => overHetHoofd()} disabled={hoofdBezig}>{hoofdBezig ? "Controleren…" : "Controleer mijn dossier"}</button>}</div>
+        {!hoofd && <p className="zacht-tekst">Zoekt in je dossier naar verhaalelementen die niet besproken worden, onbenutte tekstverbanden, themawoorden die niet in de tekst staan, ontbrekende perspectieven en zwak bewijs. Kost niets.</p>}
+        {hoofd && <>
+          {hoofd.fout && <div className="melding fout">{hoofd.fout}</div>}
+          {hoofd.signalen.length === 0 && <p>Geen automatische signalen gevonden. Dat betekent niet dat er niets ontbreekt.</p>}
+          {hoofd.signalen.map((g: X, i: number) => <div key={i} className="bewering"><span className={`label ${g.ernst === "hoog" ? "n-omstreden" : "n-niet_geverifieerd"}`}>{g.soort} · {g.ernst}</span> <b>{g.titel}</b><div>{g.toelichting}</div><div className="meta">→ {g.actie}{g.verzen?.length ? <> · {g.verzen.map((v: string) => <Link key={v} href={`/tekst?ref=${encodeURIComponent(v)}`} style={{ marginRight: 6 }}>{v}</Link>)}</> : null}</div></div>)}
+          <p className="zacht-tekst">Automatische signalen: tekstvergelijking en tellingen, geen oordeel over juistheid.</p>
+          {hoofd.ai ? <>
+            <h3>AI-meelezer ({hoofd.ai.moment.slice(0, 16).replace("T", " ")}, ${hoofd.ai.kostenUsd.toFixed(3)})</h3>
+            {hoofd.ai.vlekken.map((v: X, i: number) => <div key={i} className="bewering"><span className={`label n-${v.niveau}`}>{NIVEAU[v.niveau]}</span> <b>{v.titel}</b><div>{v.waarom}</div><div className="meta">Te onderzoeken: {v.wat_te_onderzoeken}{v.verwijzingen.length ? <> · <Refs v={v.verwijzingen} /></> : " · geen bewijs aangehaald"}{v.aangepast && <> · <i>niveau verlaagd ({v.aangepast})</i></>}</div>{v.verwijzingen.some((r: X) => r.label === open) && <BewijsPaneel r={bewijs.get(open!)} />}</div>)}
+          </> : hoofd.aiMogelijk?.kan ? <div className="rij"><button className="zacht" onClick={() => confirm(`Eén AI-ronde uitvoeren? Geraamde kosten in het slechtste geval: $${(hoofd.aiMogelijk.ramingUsd ?? 0).toFixed(3)} (binnen het onderzoeksbudget).`) && overHetHoofd(true)} disabled={hoofdBezig}>{hoofdBezig ? "AI leest mee…" : "Laat ook de AI meelezen"}</button><span className="zacht-tekst">max. ${(hoofd.aiMogelijk.ramingUsd ?? 0).toFixed(3)}</span></div> : <p className="zacht-tekst">AI-meelezer niet beschikbaar: {hoofd.aiMogelijk?.reden}</p>}
+        </>}
+      </div>}
 
       <div className="inhoud">
         <nav>{SECTIES.map(([sid, t]) => <a key={sid} href={`#${sid}`}>{t}</a>)}</nav>

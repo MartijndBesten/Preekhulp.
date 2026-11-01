@@ -53,7 +53,7 @@ function aiBeschikbaar(c: RunCtx, stap: StapId): boolean {
   return MODUS_CONFIG[c.modus].ai.includes(stap) && aanbiederStatus(c.instellingen).actief;
 }
 
-async function ai<T extends z.ZodType>(c: RunCtx, stap: string, systeem: string, invoer: string, schema: T, maxTokens: number) {
+export async function ai<T extends z.ZodType>(c: RunCtx, stap: string, systeem: string, invoer: string, schema: T, maxTokens: number) {
   return vraagJson(
     c.d,
     { stap, systeem, invoer, schema, maxTokens, inspanning: MODUS_CONFIG[c.modus].inspanning ?? c.instellingen.inspanning },
@@ -61,7 +61,7 @@ async function ai<T extends z.ZodType>(c: RunCtx, stap: string, systeem: string,
   );
 }
 
-const BASIS_SYSTEEM = `Je bent een kritische, wetenschappelijk geschoolde onderzoeksassistent voor een predikant in de Protestantse Kerk in Nederland (PKN). Je schrijft geen preek; je helpt grondig, eerlijk en controleerbaar onderzoek doen.
+export const BASIS_SYSTEEM = `Je bent een kritische, wetenschappelijk geschoolde onderzoeksassistent voor een predikant in de Protestantse Kerk in Nederland (PKN). Je schrijft geen preek; je helpt grondig, eerlijk en controleerbaar onderzoek doen.
 
 Werkregels:
 1. Feitelijke beweringen over teksten, auteurs en bronnen baseer je uitsluitend op het aangeleverde bewijsmateriaal (labels E1, E2, …). Verzin nooit boeken, auteurs, publicaties, DOI's, paginanummers, citaten of videotijdstippen.

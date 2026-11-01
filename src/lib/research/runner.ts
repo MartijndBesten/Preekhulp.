@@ -67,7 +67,7 @@ export function isLopend(id: string) {
   return lopend.has(id);
 }
 
-function ctxVoor(d: DatabaseSync, id: string, extra?: string): RunCtx {
+export function ctxVoor(d: DatabaseSync, id: string, extra?: string): RunCtx {
   const o = d.prepare("SELECT * FROM onderzoeken WHERE id = ?").get(id) as { vraag: string; modus: Modus; opties: string; budget_usd: number };
   return { d, id, vraag: o.vraag, modus: o.modus, opties: json<OnderzoeksOpties>(o.opties, {}), instellingen: leesInstellingen(d), budgetUsd: o.budget_usd, extra };
 }

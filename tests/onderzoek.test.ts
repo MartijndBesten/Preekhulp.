@@ -30,6 +30,21 @@ t("Onderzoeksworkflow (Genesis 31:13)", () => {
     expect(x.beweringen.filter((b) => b.niveau === "direct_aangetoond").every((b) => b.verwijzingen.length > 0)).toBe(true);
   }, 60_000);
 
+  it("Wat zie ik over het hoofd?: concrete signalen uit het dossier, zonder AI en zonder netwerk", async () => {
+    const { maakOnderzoek, voerUit } = await import("../src/lib/research/runner");
+    const { overHetHoofd } = await import("../src/lib/research/overhoofd");
+    const id = maakOnderzoek(d, "Ik bereid een doopdienst voor vanuit Genesis 31:13 met als thema ‘Terug naar de belofte’.", "verkennen", { zonderExtern: true }, null);
+    await voerUit(d, id);
+    const r = overHetHoofd(d, id)!;
+    // Thema: 'belofte' en 'doop' staan niet in de tekst van Genesis 31 (SV/BSB) → interpretatieve stap benoemen
+    expect(r.signalen.find((s) => s.soort === "thema")?.titel).toMatch(/doop/);
+    // Verhaalelementen of tekstverbanden die het dossier niet benut
+    expect(r.signalen.some((s) => s.soort === "tekst" || s.soort === "verband")).toBe(true);
+    expect(r.signalen.some((s) => s.soort === "perspectief")).toBe(true);
+    expect(r.ai).toBeNull();
+    expect(r.aiMogelijk.kan).toBe(false);
+  }, 60_000);
+
   it("YouTube-link in de vraag: met transcript tijdlinks als bewijs, zonder transcript geen inhoudelijke uitspraken", async () => {
     const { maakOnderzoek, voerUit } = await import("../src/lib/research/runner");
     const { laadDossier, naarMarkdown } = await import("../src/lib/reports/dossier");
@@ -62,6 +77,7 @@ t("Onderzoeksworkflow (Genesis 31:13)", () => {
       if (taak.stap === "D-beoordeling") return { beoordelingen: [] };
       if (taak.stap === "G-tegenlezing") return { punten: [], zoekvragen_tegenperspectief: [], steuncontrole: [{ bewering: "C9999", oordeel: "ondersteunt_niet", toelichting: "bestaat niet" }], eindoordeel: "ok" };
       const b = (tekst: string, niveau: string, verwijzingen: { label: string; citaat: string | null }[]) => ({ tekst, niveau, verwijzingen, interpretatieve_stap: null, tegenverwijzingen: [], onzekerheid: null });
+      if (taak.stap === "W-over-het-hoofd") return { blinde_vlekken: [{ titel: "Verzonnen invalshoek", waarom: "x", wat_te_onderzoeken: "y", niveau: "direct_aangetoond", verwijzingen: [{ label: "E7777", citaat: null }] }, { titel: "Gilead-steenhoop", waarom: "verbond Laban", wat_te_onderzoeken: "z", niveau: "mogelijke_onderzoekslijn", verwijzingen: [] }] };
       if (taak.stap === "V-verdieping") return { onderwerpen: [{ onderwerp: "terafim", waarom_in_de_tekst: [b("Verdieping met verzonnen bron", "onderbouwde_interpretatie", [{ label: "E8888", citaat: null }])], wat_uitleggers_zeggen: [], samenhang_elders: [], alternatieve_verklaringen: [], wat_de_tekst_niet_zegt: ["motief van Rachel"] }] };
       return {
         context: [], grondtaal: [], historische_uitleg: [], hedendaagse_uitleg: [], bijbelse_theologie: [], dogmatiek: [], homiletiek: [], overeenstemming: [], verschillen: [], tekst_vs_later: [], nieuwe_lijnen: [], open_vragen: ["v"],
@@ -96,6 +112,13 @@ t("Onderzoeksworkflow (Genesis 31:13)", () => {
       expect(x.bronnen.some((b) => b.ladder.niveau >= 5)).toBe(true);
       expect(x.bronnen.every((b) => b.toegang === "volledige tekst" || b.toegang === "transcript" || b.ladder.niveau <= 3)).toBe(true);
       // Claim-bronmatrix: alleen AI-beweringen; verzonnen verwijzing staat er zonder bewijs in
+      // Over het hoofd met AI: raming vooraf, verzonnen verwijzing → niet geverifieerd
+      const oh = await import("../src/lib/research/overhoofd");
+      expect(oh.overHetHoofd(d, id)!.aiMogelijk.kan).toBe(true);
+      const met = await oh.overHetHoofdMetAi(d, id);
+      expect(met.ai!.vlekken[0].niveau).toBe("niet_geverifieerd");
+      expect(met.ai!.vlekken[0].verwijzingen).toEqual([]);
+      expect(oh.overHetHoofd(d, id)!.ai?.vlekken).toHaveLength(2);
       expect(x.matrix.length).toBe(x.beweringen.filter((b) => b.herkomst === "ai").length);
       expect(x.matrix.find((m) => m.tekst === "Verzonnen bron")?.bewijs).toEqual([]);
       const { naarMarkdown } = await import("../src/lib/reports/dossier");
