@@ -12,6 +12,7 @@ const SECTIES = [
   ["historisch", "5. Historische commentaren"], ["hedendaags", "6. Hedendaagse uitleg"], ["perspectieven", "7. Theologische perspectieven"], ["preken", "8. Preken en lezingen"],
   ["lijnen", "9. Nieuwe onderzoekslijnen"], ["kritisch", "10. Kritische aandachtspunten"], ["homiletiek", "11. Homiletische verbindingen"], ["vervolg", "12. Vervolgvragen"], ["bronnen", "13. Bronnen"],
 ] as const;
+const VLEK: Record<string, string> = { ontbrekende_context: "Ontbrekende context", niet_genoemd_gedeelte: "Niet genoemd gedeelte", alternatieve_interpretatie: "Alternatieve uitleg", mogelijke_fout: "Mogelijke fout", wetenschappelijk_tegenargument: "Wetenschappelijk tegenargument", homiletische_mogelijkheid: "Homiletische mogelijkheid" };
 const MATRIX_WAARSCHUWING = "Automatische controle vergelijkt tekst: bestaat het bewijsstuk, staat het citaat er letterlijk in, is het een primaire bron. Dat zegt níet dat de uitleg juist is. De steuncontrole is een AI-oordeel en kan een bewering alleen afwaarderen. Lees bij twijfel de bron zelf.";
 const MARKERINGEN = ["relevant", "later lezen", "kritisch perspectief", "gebruikt", "niet relevant"];
 
@@ -29,6 +30,7 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
   const [verdiep, setVerdiep] = useState<{ stap: string; extra: string } | null>(null);
   const [hoofd, setHoofd] = useState<X | null>(null);
   const [hoofdBezig, setHoofdBezig] = useState(false);
+  const [gedachte, setGedachte] = useState("");
   const [filter, setFilter] = useState<{ type: string; toegang: string; alleenGeverifieerd: boolean }>({ type: "", toegang: "", alleenGeverifieerd: false });
 
   const laad = useCallback(async () => {
@@ -69,9 +71,7 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
   }
   async function overHetHoofd(metAi = false) {
     setHoofdBezig(true);
-    const r = metAi
-      ? await fetch(`/api/onderzoek/${id}/overhoofd`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ai: true, akkoordRamingUsd: hoofd?.aiMogelijk?.ramingUsd }) })
-      : await fetch(`/api/onderzoek/${id}/overhoofd`);
+    const r = await fetch(`/api/onderzoek/${id}/overhoofd`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(metAi ? { gedachte, ai: true, akkoordRamingUsd: hoofd?.aiMogelijk?.ramingUsd } : { gedachte }) });
     const j = await r.json();
     setHoofdBezig(false);
     if (!r.ok) return setHoofd({ ...(hoofd ?? { signalen: [] }), fout: j.fout });
@@ -140,8 +140,11 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
       </div>
 
       {!bezig && <div className="kaart geen-print" id="overhoofd">
-        <div className="rij" style={{ justifyContent: "space-between" }}><h2 style={{ margin: 0 }}>Wat zie ik over het hoofd?</h2>{!hoofd && <button onClick={() => overHetHoofd()} disabled={hoofdBezig}>{hoofdBezig ? "Controleren…" : "Controleer mijn dossier"}</button>}</div>
-        {!hoofd && <p className="zacht-tekst">Zoekt in je dossier naar verhaalelementen die niet besproken worden, onbenutte tekstverbanden, themawoorden die niet in de tekst staan, ontbrekende perspectieven en zwak bewijs. Kost niets.</p>}
+        <h2 style={{ marginTop: 0 }}>Wat zie ik over het hoofd?</h2>
+        <label>Je voorlopige gedachte of preeklijn (optioneel)</label>
+        <textarea value={gedachte} onChange={(e) => setGedachte(e.target.value)} placeholder="bv. God roept Jakob terug naar Betel, naar de belofte van toen; zo roept God ons in de doop terug naar zijn belofte." style={{ minHeight: 70 }} />
+        <div className="rij" style={{ marginTop: 8 }}><button onClick={() => overHetHoofd()} disabled={hoofdBezig}>{hoofdBezig ? "Controleren…" : hoofd ? "Opnieuw controleren" : "Controleer (gratis)"}</button></div>
+        {!hoofd && <p className="zacht-tekst">Legt je gedachte en je dossier naast de tekst: verhaalelementen en gedeelten die je niet noemt, begrippen die niet in de tekst staan, ontbrekende perspectieven, omstreden punten en zwak bewijs. Daarna kun je de AI laten zoeken naar ontbrekende context, alternatieve uitleg, mogelijke fouten, wetenschappelijke tegenargumenten en homiletische mogelijkheden.</p>}
         {hoofd && <>
           {hoofd.fout && <div className="melding fout">{hoofd.fout}</div>}
           {hoofd.signalen.length === 0 && <p>Geen automatische signalen gevonden. Dat betekent niet dat er niets ontbreekt.</p>}
@@ -149,8 +152,9 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
           <p className="zacht-tekst">Automatische signalen: tekstvergelijking en tellingen, geen oordeel over juistheid.</p>
           {hoofd.ai ? <>
             <h3>AI-meelezer ({hoofd.ai.moment.slice(0, 16).replace("T", " ")}, ${hoofd.ai.kostenUsd.toFixed(3)})</h3>
-            {hoofd.ai.vlekken.map((v: X, i: number) => <div key={i} className="bewering"><span className={`label n-${v.niveau}`}>{NIVEAU[v.niveau]}</span> <b>{v.titel}</b><div>{v.waarom}</div><div className="meta">Te onderzoeken: {v.wat_te_onderzoeken}{v.verwijzingen.length ? <> · <Refs v={v.verwijzingen} /></> : " · geen bewijs aangehaald"}{v.aangepast && <> · <i>niveau verlaagd ({v.aangepast})</i></>}</div>{v.verwijzingen.some((r: X) => r.label === open) && <BewijsPaneel r={bewijs.get(open!)} />}</div>)}
-          </> : hoofd.aiMogelijk?.kan ? <div className="rij"><button className="zacht" onClick={() => confirm(`Eén AI-ronde uitvoeren? Geraamde kosten in het slechtste geval: $${(hoofd.aiMogelijk.ramingUsd ?? 0).toFixed(3)} (binnen het onderzoeksbudget).`) && overHetHoofd(true)} disabled={hoofdBezig}>{hoofdBezig ? "AI leest mee…" : "Laat ook de AI meelezen"}</button><span className="zacht-tekst">max. ${(hoofd.aiMogelijk.ramingUsd ?? 0).toFixed(3)}</span></div> : <p className="zacht-tekst">AI-meelezer niet beschikbaar: {hoofd.aiMogelijk?.reden}</p>}
+            {hoofd.ai.gedachte && <p className="zacht-tekst">Bij gedachte: “{hoofd.ai.gedachte.slice(0, 200)}{hoofd.ai.gedachte.length > 200 ? "…" : ""}”</p>}
+            {hoofd.ai.vlekken.map((v: X, i: number) => <div key={i} className="bewering"><span className="label n-mogelijke_onderzoekslijn">{VLEK[v.soort] ?? v.soort}</span> <span className={`label n-${v.niveau}`}>{NIVEAU[v.niveau]}</span> <b>{v.titel}</b><div>{v.waarom}</div><div className="meta">Te onderzoeken: {v.wat_te_onderzoeken}{v.verwijzingen.length ? <> · <Refs v={v.verwijzingen} /></> : " · geen bewijs aangehaald"}{v.aangepast && <> · <i>niveau verlaagd ({v.aangepast})</i></>}</div>{v.verwijzingen.some((r: X) => r.label === open) && <BewijsPaneel r={bewijs.get(open!)} />}</div>)}
+          </> : hoofd.aiMogelijk?.kan ? <div className="rij"><button className="zacht" onClick={() => confirm(`Eén AI-ronde uitvoeren${gedachte.trim() ? " (met je gedachte)" : ""}? Geraamde kosten in het slechtste geval: $${(hoofd.aiMogelijk.ramingUsd ?? 0).toFixed(3)} (binnen het onderzoeksbudget).`) && overHetHoofd(true)} disabled={hoofdBezig}>{hoofdBezig ? "AI leest mee…" : "Laat ook de AI meelezen"}</button><span className="zacht-tekst">max. ${(hoofd.aiMogelijk.ramingUsd ?? 0).toFixed(3)}</span></div> : <p className="zacht-tekst">AI-meelezer niet beschikbaar: {hoofd.aiMogelijk?.reden}</p>}
         </>}
       </div>}
 

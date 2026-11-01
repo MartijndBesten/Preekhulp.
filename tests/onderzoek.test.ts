@@ -43,6 +43,14 @@ t("Onderzoeksworkflow (Genesis 31:13)", () => {
     expect(r.signalen.some((s) => s.soort === "perspectief")).toBe(true);
     expect(r.ai).toBeNull();
     expect(r.aiMogelijk.kan).toBe(false);
+    // Met voorlopige gedachte: niet-genoemde gedeelten en begrippen buiten de tekst
+    const g = overHetHoofd(d, id, "God roept Jakob terug naar Betel (Genesis 28:10-22), naar de belofte; zo roept God ons in de doop terug naar het verbond, als sacrament van genade.")!;
+    const nietGenoemd = g.signalen.find((s) => s.titel.startsWith("Je gedachte noemt"));
+    expect(nietGenoemd).toBeTruthy();
+    expect(nietGenoemd!.verzen!.some((v) => v.startsWith("Genesis 28"))).toBe(false);
+    const begrippen = g.signalen.find((s) => s.titel.startsWith("Begrippen uit je gedachte"))!.toelichting;
+    expect(begrippen).toMatch(/sacrament/);
+    expect(begrippen).not.toMatch(/verbond/); // staat in Gen 31:44 (SV): geen vals signaal
   }, 60_000);
 
   it("YouTube-link in de vraag: met transcript tijdlinks als bewijs, zonder transcript geen inhoudelijke uitspraken", async () => {
@@ -77,7 +85,7 @@ t("Onderzoeksworkflow (Genesis 31:13)", () => {
       if (taak.stap === "D-beoordeling") return { beoordelingen: [] };
       if (taak.stap === "G-tegenlezing") return { punten: [], zoekvragen_tegenperspectief: [], steuncontrole: [{ bewering: "C9999", oordeel: "ondersteunt_niet", toelichting: "bestaat niet" }], eindoordeel: "ok" };
       const b = (tekst: string, niveau: string, verwijzingen: { label: string; citaat: string | null }[]) => ({ tekst, niveau, verwijzingen, interpretatieve_stap: null, tegenverwijzingen: [], onzekerheid: null });
-      if (taak.stap === "W-over-het-hoofd") return { blinde_vlekken: [{ titel: "Verzonnen invalshoek", waarom: "x", wat_te_onderzoeken: "y", niveau: "direct_aangetoond", verwijzingen: [{ label: "E7777", citaat: null }] }, { titel: "Gilead-steenhoop", waarom: "verbond Laban", wat_te_onderzoeken: "z", niveau: "mogelijke_onderzoekslijn", verwijzingen: [] }] };
+      if (taak.stap === "W-over-het-hoofd") return { blinde_vlekken: [{ soort: "mogelijke_fout", titel: "Verzonnen invalshoek", waarom: "x", wat_te_onderzoeken: "y", niveau: "direct_aangetoond", verwijzingen: [{ label: "E7777", citaat: null }] }, { soort: "ontbrekende_context", titel: "Gilead-steenhoop", waarom: "verbond Laban", wat_te_onderzoeken: "z", niveau: "mogelijke_onderzoekslijn", verwijzingen: [] }] };
       if (taak.stap === "V-verdieping") return { onderwerpen: [{ onderwerp: "terafim", waarom_in_de_tekst: [b("Verdieping met verzonnen bron", "onderbouwde_interpretatie", [{ label: "E8888", citaat: null }])], wat_uitleggers_zeggen: [], samenhang_elders: [], alternatieve_verklaringen: [], wat_de_tekst_niet_zegt: ["motief van Rachel"] }] };
       return {
         context: [], grondtaal: [], historische_uitleg: [], hedendaagse_uitleg: [], bijbelse_theologie: [], dogmatiek: [], homiletiek: [], overeenstemming: [], verschillen: [], tekst_vs_later: [], nieuwe_lijnen: [], open_vragen: ["v"],

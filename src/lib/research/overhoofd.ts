@@ -15,6 +15,7 @@ import { ai, BASIS_SYSTEEM, bewijsVoorLabels } from "./stappen";
 import { Verwijzing } from "./types";
 import { controleer, NIVEAUS, type Niveau } from "../verification/claims";
 import { DATA_NIET_INSTRUCTIE } from "../ai";
+import { vindVerwijzingenInTekst } from "../scripture/reference";
 
 export type Soort = "tekst" | "verband" | "thema" | "perspectief" | "bewijs" | "bronnen" | "aanname";
 
@@ -27,7 +28,14 @@ export interface Signaal {
   verzen?: string[];
 }
 
+export const VLEK_SOORTEN = ["ontbrekende_context", "niet_genoemd_gedeelte", "alternatieve_interpretatie", "mogelijke_fout", "wetenschappelijk_tegenargument", "homiletische_mogelijkheid"] as const;
+export const VLEK_LABEL: Record<(typeof VLEK_SOORTEN)[number], string> = {
+  ontbrekende_context: "Ontbrekende context", niet_genoemd_gedeelte: "Niet genoemd Bijbelgedeelte", alternatieve_interpretatie: "Alternatieve interpretatie",
+  mogelijke_fout: "Mogelijke fout", wetenschappelijk_tegenargument: "Wetenschappelijk tegenargument", homiletische_mogelijkheid: "Homiletische mogelijkheid",
+};
+
 export interface AiBlindeVlek {
+  soort: (typeof VLEK_SOORTEN)[number];
   titel: string;
   waarom: string;
   wat_te_onderzoeken: string;
@@ -38,15 +46,17 @@ export interface AiBlindeVlek {
 
 export interface OverHetHoofd {
   signalen: Signaal[];
-  ai: { moment: string; vlekken: AiBlindeVlek[]; kostenUsd: number } | null;
+  gedachte: string | null;
+  ai: { moment: string; gedachte: string | null; vlekken: AiBlindeVlek[]; kostenUsd: number } | null;
   aiMogelijk: { kan: boolean; reden: string | null; ramingUsd: number | null };
 }
 
+const GEWOON = new Set(["eigenlijk", "daarom", "waarin", "waarbij", "omdat", "zodat", "terwijl", "wanneer", "andere", "anderen", "steeds", "telkens", "gemeente", "preek", "prediking", "vandaag", "mensen", "worden", "werden", "hebben", "kunnen", "moeten", "zullen", "zouden", "tekst", "verhaal", "betekent", "betekenis", "laten", "bijvoorbeeld"]);
 const STOP = new Set(["terug", "naar", "voor", "over", "door", "deze", "die", "dat", "een", "het", "van", "met", "zijn", "haar", "zich", "naar", "thema"]);
 const stam = (w: string) => w.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}]/gu, "").slice(0, 6);
 
 /** Deterministische controles. Kost niets en raakt geen netwerk. */
-export function signalen(x: Dossier): Signaal[] {
+export function signalen(x: Dossier, gedachte?: string | null, d?: DatabaseSync): Signaal[] {
   const uit: Signaal[] = [];
   const bewijsPer = new Map(x.bewijs.map((r) => [r.label, r]));
   // Wat het dossier in beweringen werkelijk gebruikt (vindplaatsen + teksten)
@@ -91,7 +101,12 @@ export function signalen(x: Dossier): Signaal[] {
   if (nt && nt.stemmen >= 10) uit.push({ soort: "verband", ernst: "laag", titel: `NT-verband niet besproken: ${nt.label}`, toelichting: `Vaak genoemd als kruisverwijzing (${nt.stemmen} stemmen bij OpenBible.info, ${nt.via === "direct" ? "direct" : `via ${nt.via}`}). Stemmen zijn een vindplaats, geen bewijs.`, actie: "Bekijk of het NT deze tekst werkelijk citeert of er alleen aan doet denken.", verzen: [nt.label] });
 
   // 3. Themawoorden die niet in de Bijbeltekst zelf staan
-  const tekst = x.bewijs.filter((r) => r.soort === "bijbeltekst" && /^tekst:/.test(r.herkomst)).map((r) => r.tekst).join(" ");
+  // Woordcontrole op de volledige focus- én contexttekst in SV en BSB (het dossier bewaart de context alleen in BSB).
+  const bereik = x.a?.context ?? x.a?.focus ?? null;
+  const tekst = [
+    ...x.bewijs.filter((r) => r.soort === "bijbeltekst" && /^tekst:/.test(r.herkomst)).map((r) => r.tekst),
+    ...(d && bereik ? verzen(d, bereik.start, bereik.eind, 200).flatMap((v) => [v.teksten.SV ?? "", v.teksten.BSB ?? ""]) : []),
+  ].join(" ");
   const tekstStammen = new Set(tekst.split(/[^\p{L}]+/u).filter(Boolean).map(stam));
   const themaWoorden = [...new Set([...(x.a?.thema ?? "").split(/\s+/), ...(/doop/i.test(`${x.vraag} ${x.a?.dienst ?? ""}`) ? ["doop"] : [])].map((w) => w.replace(/[^\p{L}]/gu, "")).filter((w) => w.length > 3 && !STOP.has(w.toLowerCase())))];
   const ontbrekend = themaWoorden.filter((w) => !tekstStammen.has(stam(w)));
@@ -102,6 +117,23 @@ export function signalen(x: Dossier): Signaal[] {
       toelichting: `${ontbrekend.join(", ")} komt niet letterlijk voor in de focus- en contexttekst (Statenvertaling/BSB) van je dossier. Dat kan prima, maar dan is de verbinding een interpretatieve stap (bijbels-theologisch, dogmatisch of homiletisch).`,
       actie: "Benoem welke tekstgegevens die stap dragen, en of het thema de tekst volgt of erop wordt gelegd. Vergelijk bijvoorbeeld wie in de tekst belooft en wat er beloofd wordt.",
     });
+  }
+
+  // 3b. De voorlopige gedachte van de predikant naast de tekst en de tekstverbanden leggen
+  if (gedachte?.trim()) {
+    const genoemdeRefs = vindVerwijzingenInTekst(gedachte);
+    const raakt = (label: string) => vindVerwijzingenInTekst(label).some((r) => genoemdeRefs.some((g) => g.start <= r.eind && g.eind >= r.start));
+    const kandidaten = [
+      ...(x.c?.motieven?.interteksten ?? []).slice(0, 5).map((it) => ({ label: it.label, waarom: `deelt zeldzame woorden met je tekst (${it.gedeeld.slice(0, 3).map((g) => g.glosse.split(/[:;,]/)[0]).join(", ")})` })),
+      ...(x.c?.motieven?.ntVerbanden ?? []).filter((n) => n.stemmen >= 10).slice(0, 2).map((n) => ({ label: n.label, waarom: `vaak genoemde kruisverwijzing (${n.stemmen} stemmen)` })),
+      ...(x.v?.onderwerpen ?? []).map((o) => ({ label: o.verzen.length ? labelReeks(o.verzen[0], o.verzen[o.verzen.length - 1]) : "", waarom: `verdiepingsonderwerp: ${o.titel}` })).filter((k) => k.label),
+    ].filter((k) => !raakt(k.label));
+    if (kandidaten.length) uit.push({ soort: "verband", ernst: "hoog", titel: `Je gedachte noemt ${kandidaten.length} relevante gedeelten niet`, toelichting: kandidaten.slice(0, 5).map((k) => `${k.label} — ${k.waarom}`).join("; "), actie: "Ga na of deze gedeelten je gedachte bevestigen, nuanceren of tegenspreken.", verzen: kandidaten.slice(0, 5).map((k) => k.label) });
+    const woorden = [...new Set(gedachte.split(/[^\p{L}-]+/u).filter((w) => w.length >= 6 && !GEWOON.has(w.toLowerCase())))];
+    const buiten = woorden.filter((w) => !tekstStammen.has(stam(w)) && !ontbrekend.includes(w)).slice(0, 6);
+    if (buiten.length && tekst) uit.push({ soort: "thema", ernst: "middel", titel: `Begrippen uit je gedachte die niet in de tekst staan`, toelichting: `${buiten.map((w) => `‘${w}’`).join(", ")} komen niet voor in de focus- en contexttekst (SV/BSB). Soms is dat een vertaalkwestie of een synoniem; soms leg je er een eigen kader op.`, actie: "Ga per begrip na: staat het (met een ander woord) in de tekst, of komt het uit je eigen theologische kader?" });
+    const omstreden = x.beweringen.filter((b) => b.niveau === "omstreden");
+    if (omstreden.length) uit.push({ soort: "bewijs", ernst: "middel", titel: `${omstreden.length} punten in je dossier zijn omstreden`, toelichting: omstreden.slice(0, 3).map((b) => `${b.id}: ${b.tekst.slice(0, 140)}`).join(" · "), actie: "Kijk of je gedachte op een van deze punten leunt; zo ja, benoem de keuze en het alternatief." });
   }
 
   // 4. Perspectieven en soorten bronnen
@@ -137,22 +169,22 @@ export function signalen(x: Dossier): Signaal[] {
 
 const SchemaOverHetHoofd = z.object({
   blinde_vlekken: z
-    .array(z.object({ titel: z.string(), waarom: z.string(), wat_te_onderzoeken: z.string(), niveau: z.enum(NIVEAUS), verwijzingen: z.array(Verwijzing) }))
-    .describe("Hooguit 6 werkelijk ontbrekende invalshoeken; geen herhaling van wat het dossier al behandelt"),
+    .array(z.object({ soort: z.enum(VLEK_SOORTEN), titel: z.string(), waarom: z.string(), wat_te_onderzoeken: z.string(), niveau: z.enum(NIVEAUS), verwijzingen: z.array(Verwijzing) }))
+    .describe("Hooguit 8 werkelijk ontbrekende invalshoeken, verdeeld over de soorten; geen herhaling van wat het dossier al behandelt"),
 });
 
 const MAX_TOKENS = 4000;
 
-function invoerVoorAi(x: Dossier, s: Signaal[]): string {
+function invoerVoorAi(x: Dossier, s: Signaal[], gedachte?: string | null): string {
   return `Onderzoeksvraag van de predikant: """${x.vraag}"""
-
+${gedachte?.trim() ? `\nVoorlopige gedachte van de predikant (toets deze kritisch, bevestig haar niet automatisch): """${gedachte.trim().slice(0, 3000)}"""\n` : ""}
 Het dossier behandelt nu deze beweringen (kort):
 ${x.beweringen.slice(0, 60).map((b) => `- ${b.id} [${b.niveau}] ${b.tekst.slice(0, 200)}`).join("\n")}
 
 Automatisch gevonden signalen van mogelijke blinde vlekken:
 ${s.map((g) => `- (${g.soort}) ${g.titel}: ${g.toelichting}`).join("\n") || "- geen"}
 
-Opdracht: wat ziet deze predikant over het hoofd? Denk aan: verhaalelementen en personen die het dossier negeert, alternatieve lezingen, tekstkritische of vertaalkwesties, oud-oosterse achtergrond, joodse en vroegchristelijke receptie, theologische spanningen, en waar het thema de tekst mogelijk stuurt. Alleen invalshoeken die ontbreken, elk met verwijzing naar bewijslabels als je iets over de tekst of bronnen beweert. Geen preek, geen toepassing.`;
+Opdracht: wat ziet deze predikant over het hoofd${gedachte?.trim() ? " in zijn of haar voorlopige gedachte en in het dossier" : ""}? Zoek naar: ontbrekende context (literair, historisch, oud-oosters), relevante maar niet genoemde Bijbelgedeelten, alternatieve interpretaties (ook joodse en vroegchristelijke receptie), mogelijke fouten of te snelle conclusies, wetenschappelijke tegenargumenten, en nieuwe homiletische mogelijkheden die de tekst zelf aanreikt. Alleen wat ontbreekt; elk punt met verwijzing naar bewijslabels als je iets over de tekst of bronnen beweert. Zeg het eerlijk als de gedachte de tekst geweld aandoet. Geen preek.`;
 }
 
 function bewaarde(d: DatabaseSync, id: string): OverHetHoofd["ai"] {
@@ -160,21 +192,21 @@ function bewaarde(d: DatabaseSync, id: string): OverHetHoofd["ai"] {
   return json<OverHetHoofd["ai"]>(r?.uitvoer, null);
 }
 
-export function overHetHoofd(d: DatabaseSync, id: string): OverHetHoofd | null {
+export function overHetHoofd(d: DatabaseSync, id: string, gedachte: string | null = null): OverHetHoofd | null {
   const x = laadDossier(d, id);
   if (!x) return null;
-  const s = signalen(x);
+  const s = signalen(x, gedachte, d);
   const c = ctxVoor(d, id);
   const st = aanbiederStatus(c.instellingen);
-  const raming = st.actief ? ramingUsd(c.instellingen, BASIS_SYSTEEM.length + invoerVoorAi(x, s).length + Math.min(60_000, 30_000), MAX_TOKENS) : null;
-  return { signalen: s, ai: bewaarde(d, id), aiMogelijk: { kan: st.actief, reden: st.reden, ramingUsd: raming } };
+  const raming = st.actief ? ramingUsd(c.instellingen, BASIS_SYSTEEM.length + invoerVoorAi(x, s, gedachte).length + Math.min(60_000, 30_000), MAX_TOKENS) : null;
+  return { signalen: s, gedachte, ai: bewaarde(d, id), aiMogelijk: { kan: st.actief, reden: st.reden, ramingUsd: raming } };
 }
 
 /** Optionele AI-ronde. Alleen aanroepen na een expliciete keuze van de gebruiker. */
-export async function overHetHoofdMetAi(d: DatabaseSync, id: string): Promise<OverHetHoofd> {
+export async function overHetHoofdMetAi(d: DatabaseSync, id: string, gedachte: string | null = null): Promise<OverHetHoofd> {
   const x = laadDossier(d, id);
   if (!x) throw new Error("Onderzoek niet gevonden");
-  const s = signalen(x);
+  const s = signalen(x, gedachte, d);
   const c = ctxVoor(d, id);
   // Bewijs: de focustekst plus wat de signalen aanwijzen (verzen) en het verdiepingsmateriaal
   const verzenUitSignalen = new Set(s.flatMap((g) => g.verzen ?? []));
@@ -188,15 +220,15 @@ export async function overHetHoofdMetAi(d: DatabaseSync, id: string): Promise<Ov
   const { registreer } = await import("./bewijs");
   const { ontleedVerwijzing } = await import("../scripture/reference");
   for (const v of extra.slice(0, 10)) for (const ref of ontleedVerwijzing(v).slice(0, 1)) for (const vs of verzen(d, ref.start, Math.min(ref.eind, ref.start + 6), 7)) if (vs.teksten.BSB) labels.push(registreer(d, id, { connector: "lokaal-bijbel", extern_id: "BSB", brontype: "bijbeltekst", titel: "Berean Standard Bible", auteurs: [], url: "https://berean.bible/", toegang: "volledige tekst", rechten: { vindbaar: "ja", leesbaar: "ja", downloadbaar: "ja", herbruikbaar: "ja", licentie: "Publiek domein" } }, { soort: "bijbeltekst", locatie: `${vs.label} (BSB)`, tekst: vs.teksten.BSB }, "overhoofd"));
-  const r = await ai(c, "W-over-het-hoofd", `${BASIS_SYSTEEM}\n\n${DATA_NIET_INSTRUCTIE}`, `${invoerVoorAi(x, s)}\n\n${bewijsVoorLabels(c, labels)}`, SchemaOverHetHoofd, MAX_TOKENS);
+  const r = await ai(c, "W-over-het-hoofd", `${BASIS_SYSTEEM}\n\n${DATA_NIET_INSTRUCTIE}`, `${invoerVoorAi(x, s, gedachte)}\n\n${bewijsVoorLabels(c, labels)}`, SchemaOverHetHoofd, MAX_TOKENS);
   const bm = bewijsMap(bewijsRijen(d, id));
   const vlekken: AiBlindeVlek[] = r.data.blinde_vlekken.slice(0, 6).map((v) => {
     const k = controleer(v.niveau, v.verwijzingen, bm, v.titel);
-    return { titel: v.titel, waarom: v.waarom, wat_te_onderzoeken: v.wat_te_onderzoeken, niveau: k.niveau, verwijzingen: k.verwijzingen.map((w) => ({ label: w.label, citaat: w.citaat ?? null })), aangepast: k.controle.aangepast?.reden ?? null };
+    return { soort: v.soort, titel: v.titel, waarom: v.waarom, wat_te_onderzoeken: v.wat_te_onderzoeken, niveau: k.niveau, verwijzingen: k.verwijzingen.map((w) => ({ label: w.label, citaat: w.citaat ?? null })), aangepast: k.controle.aangepast?.reden ?? null };
   });
-  const uit = { moment: nu(), vlekken, kostenUsd: r.kostenUsd };
+  const uit = { moment: nu(), gedachte, vlekken, kostenUsd: r.kostenUsd };
   d.prepare("INSERT OR REPLACE INTO onderzoek_stappen (onderzoek, stap, status, uitvoer, klaar) VALUES (?, 'W', 'klaar', ?, ?)").run(id, JSON.stringify(uit), nu());
   d.prepare("UPDATE onderzoeken SET kosten_usd = (SELECT COALESCE(SUM(kosten_usd),0) FROM ai_gebruik WHERE onderzoek = ?) WHERE id = ?").run(id, id);
-  return { signalen: s, ai: uit, aiMogelijk: { kan: true, reden: null, ramingUsd: null } };
+  return { signalen: s, gedachte, ai: uit, aiMogelijk: { kan: true, reden: null, ramingUsd: null } };
 }
 
