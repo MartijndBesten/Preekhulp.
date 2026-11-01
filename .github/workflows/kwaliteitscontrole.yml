@@ -38,7 +38,7 @@ jobs:
 
   academische-api-proef:
     name: Externe academische API-proef (zonder betaalde sleutels)
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
