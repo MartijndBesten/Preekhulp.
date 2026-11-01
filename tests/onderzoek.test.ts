@@ -39,10 +39,12 @@ t("Onderzoeksworkflow (Genesis 31:13)", () => {
       if (taak.stap === "A-vraag") return leeg;
       if (taak.stap === "B-zoekvragen") return { zoekvragen: [] };
       if (taak.stap === "D-beoordeling") return { beoordelingen: [] };
-      if (taak.stap === "G-tegenlezing") return { punten: [], zoekvragen_tegenperspectief: [], eindoordeel: "ok" };
-      const b = (tekst: string, niveau: string, verwijzingen: { label: string; citaat: string | null }[]) => ({ tekst, niveau, verwijzingen });
+      if (taak.stap === "G-tegenlezing") return { punten: [], zoekvragen_tegenperspectief: [], steuncontrole: [{ bewering: "C9999", oordeel: "ondersteunt_niet", toelichting: "bestaat niet" }], eindoordeel: "ok" };
+      const b = (tekst: string, niveau: string, verwijzingen: { label: string; citaat: string | null }[]) => ({ tekst, niveau, verwijzingen, interpretatieve_stap: null, tegenverwijzingen: [], onzekerheid: null });
+      if (taak.stap === "V-verdieping") return { onderwerpen: [{ onderwerp: "terafim", waarom_in_de_tekst: [b("Verdieping met verzonnen bron", "onderbouwde_interpretatie", [{ label: "E8888", citaat: null }])], wat_uitleggers_zeggen: [], samenhang_elders: [], alternatieve_verklaringen: [], wat_de_tekst_niet_zegt: ["motief van Rachel"] }] };
       return {
         context: [], grondtaal: [], historische_uitleg: [], hedendaagse_uitleg: [], bijbelse_theologie: [], dogmatiek: [], homiletiek: [], overeenstemming: [], verschillen: [], tekst_vs_later: [], nieuwe_lijnen: [], open_vragen: ["v"],
+        verdieping_voorstellen: [{ onderwerp: "Rachel en de terafim", waarom: "onverwacht", bijbelgedeelten: ["Genesis 31:19"], zoektermen: ["teraphim Rachel"] }],
         exegese: [
           b("Verzonnen bron", "direct_aangetoond", [{ label: "E9999", citaat: null }]),
           b("Verzonnen citaat", "direct_aangetoond", [{ label: "E1", citaat: "dit staat nergens in de tekst" }]),
@@ -63,6 +65,13 @@ t("Onderzoeksworkflow (Genesis 31:13)", () => {
       expect(citaat.niveau).not.toBe("direct_aangetoond");
       expect(citaat.verwijzingen[0].citaat).toBeNull();
       expect(x.a?.refs.some((r) => r.label === "Genesis 35:1–15")).toBe(true);
+      // Verdiepingsronde: onderwerp uit de AI-analyse, met de verzen en uitleg bij Gen 31:19 als bewijs
+      const v = x.stappen.find((s) => s.id === "V");
+      expect(v?.status).toBe("klaar");
+      expect(x.bewijs.some((r) => r.herkomst.startsWith("verdieping:") && r.locatie.includes("31:19"))).toBe(true);
+      expect(x.beweringen.find((b) => b.tekst === "Verdieping met verzonnen bron")?.niveau).toBe("niet_geverifieerd");
+      // Statusladder: wat naar de AI ging, is gemarkeerd
+      expect(x.bewijs.some((r) => r.naar_ai === 1)).toBe(true);
     } finally {
       ai.zetNepAanbieder(null);
       bewaarInstellingen(d, { aiAanbieder: "geen" });
