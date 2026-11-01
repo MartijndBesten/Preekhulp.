@@ -5,7 +5,7 @@
   "description": "Preekhulp. — lokale AI-onderzoeksassistent voor predikanten (exegese, bronnen, kritische toetsing).",
   "type": "module",
   "engines": {
-    "node": ">=22.13"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "next dev -H 127.0.0.1 -p 3210",
