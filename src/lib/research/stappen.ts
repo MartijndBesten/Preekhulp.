@@ -194,10 +194,13 @@ export async function stapB(c: RunCtx, a: UitvoerA, m: Motiefanalyse | null): Pr
 }
 
 // ================================================================= C — bronnen verzamelen
+/** ok = treffers · deels = treffers maar ook fouten · geen treffers = API bereikbaar zonder resultaat · quotum = HTTP 429 · fout = niet bereikt */
+export type ConnectorStatusC = "ok" | "deels" | "geen treffers" | "quotum" | "fout" | "overgeslagen";
+
 export interface UitvoerC {
   motieven: Motiefanalyse | null;
   motievenContext: Motiefanalyse | null;
-  connectors: { id: string; naam: string; status: "ok" | "fout" | "overgeslagen"; resultaten: number; melding: string | null }[];
+  connectors: { id: string; naam: string; status: ConnectorStatusC; resultaten: number; melding: string | null }[];
   externeBronnen: string[]; // bron-id's
   dataBeweringen: { tekst: string; labels: string[] }[];
 }
@@ -327,20 +330,26 @@ export async function stapC(c: RunCtx, a: UitvoerA, b: UitvoerB): Promise<Uitvoe
     taken.push(
       (async () => {
         let n = 0;
+        let geslaagd = 0;
+        let quotum = false;
         let melding: string | null = null;
         for (const q of relevant) {
+          if (quotum) break; // quotum bereikt: deze bron niet verder belasten, onderzoek gaat door met andere bronnen
           try {
             const zv: Zoekvraag = { tekst: q.tekst, taal: q.taal, refs: a.focus ? [a.focus] : [], max: cfg.perConnector };
             const res = await k.zoek(zv, ctx);
+            geslaagd++;
             for (const r of res) {
               for (const p of r.passages.slice(0, 6)) registreer(d, id, r.record, p, `${k.kaart.id}:${q.tekst}`);
               n++;
             }
           } catch (e) {
             melding = (e as Error).message;
+            if ((e as { soort?: string }).soort === "quotum") quotum = true;
           }
         }
-        uit.connectors.push({ id: k.kaart.id, naam: k.kaart.naam, status: melding && !n ? "fout" : "ok", resultaten: n, melding });
+        const status: ConnectorStatusC = n ? (melding ? "deels" : "ok") : quotum ? "quotum" : geslaagd ? "geen treffers" : "fout";
+        uit.connectors.push({ id: k.kaart.id, naam: k.kaart.naam, status, resultaten: n, melding: status === "geen treffers" ? "API bereikbaar, geen treffers op deze zoekvragen" : melding });
       })(),
     );
   }
