@@ -1,6 +1,6 @@
 // Exporteert echte, vooraf berekende Preekhulp-uitkomsten (zonder AI, zonder externe bronnen) als compacte JSON
-// voor de statische demo op denckh.nl/preekhulp/demo/. Kost niets; raakt geen netwerk.
-// Gebruik: npx tsx scripts/demo-export.ts <uitvoermap>
+// voor de pagina denckh.nl/preekhulp/probeer/ (map public/preekhulp/voorbeelden/). Kost niets; raakt geen netwerk.
+// Gebruik: npx tsx scripts/voorbeelden-export.ts <denckh>/public/preekhulp/voorbeelden
 // Alleen vrij bruikbare data: SV/Kanttekeningen (CC0), BSB (PD), STEP (CC BY 4.0, attributie), OpenBible (CC BY),
 // Calvijn en Matthew Henry (PD). Geen eigen documenten, geen AI-tekst.
 import { execSync } from "node:child_process";
