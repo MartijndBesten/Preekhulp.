@@ -26,3 +26,16 @@ describe("Bronselectie", () => {
     expect(v.map((x) => x.groep)).toEqual(["openalex", "doaj", "openalex"]);
   });
 });
+
+describe("Over het hoofd: woord in de tekst (verbuigingen)", () => {
+  it("herkent korte verbogen vormen, maar niet verwante woorden met een ander begin", async () => {
+    const { inTekst } = await import("../src/lib/research/overhoofd");
+    const t = new Set(["en", "als", "hij", "nog", "ver", "van", "hem", "was", "beloofd", "dal", "verbond"]);
+    const s = new Set([...t].map((w) => w.slice(0, 6)));
+    expect(inTekst("verre", t, s)).toBe(true);
+    expect(inTekst("dalen", t, s)).toBe(true);
+    expect(inTekst("belofte", t, s)).toBe(false);
+    expect(inTekst("alleen", t, s)).toBe(false);
+    expect(inTekst("verbonden", t, s)).toBe(true);
+  });
+});

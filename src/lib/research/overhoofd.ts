@@ -56,7 +56,16 @@ export interface OverHetHoofd {
 
 const GEWOON = new Set(["eigenlijk", "daarom", "waarin", "waarbij", "omdat", "zodat", "terwijl", "wanneer", "andere", "anderen", "steeds", "telkens", "gemeente", "preek", "prediking", "vandaag", "mensen", "worden", "werden", "hebben", "kunnen", "moeten", "zullen", "zouden", "tekst", "verhaal", "betekent", "betekenis", "laten", "bijvoorbeeld"]);
 const STOP = new Set(["terug", "naar", "voor", "over", "door", "deze", "die", "dat", "een", "het", "van", "met", "zijn", "haar", "zich", "naar", "thema"]);
-const stam = (w: string) => w.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}]/gu, "").slice(0, 6);
+const schoon = (w: string) => w.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}]/gu, "");
+const stam = (w: string) => schoon(w).slice(0, 6);
+/** Staat het woord (of een verbogen vorm ervan) in de tekst? Zelfde begin van 6 letters, of de ene vorm is de andere
+ *  plus hooguit twee letters (ver/verre, dal/dalen). Bewust grof: een signaal, geen taalkundige analyse. */
+export function inTekst(woord: string, tekstWoorden: Set<string>, tekstStammen: Set<string>): boolean {
+  const w = schoon(woord);
+  if (tekstStammen.has(w.slice(0, 6))) return true;
+  for (const t of tekstWoorden) if (Math.min(t.length, w.length) >= 3 && Math.abs(t.length - w.length) <= 2 && (t.startsWith(w) || w.startsWith(t))) return true;
+  return false;
+}
 
 /** Deterministische controles. Kost niets en raakt geen netwerk. */
 export function signalen(x: Dossier, gedachte?: string | null, d?: DatabaseSync): Signaal[] {
@@ -116,9 +125,10 @@ export function signalen(x: Dossier, gedachte?: string | null, d?: DatabaseSync)
     ...x.bewijs.filter((r) => r.soort === "bijbeltekst" && /^tekst:/.test(r.herkomst)).map((r) => r.tekst),
     ...(d && bereik ? verzen(d, bereik.start, bereik.eind, 200).flatMap((v) => [v.teksten.SV ?? "", v.teksten.BSB ?? ""]) : []),
   ].join(" ");
-  const tekstStammen = new Set(tekst.split(/[^\p{L}]+/u).filter(Boolean).map(stam));
+  const tekstWoorden = new Set(tekst.split(/[^\p{L}]+/u).filter(Boolean).map(schoon));
+  const tekstStammen = new Set([...tekstWoorden].map((t) => t.slice(0, 6)));
   const themaWoorden = [...new Set([...(x.a?.thema ?? "").split(/\s+/), ...(/doop/i.test(`${x.vraag} ${x.a?.dienst ?? ""}`) ? ["doop"] : [])].map((w) => w.replace(/[^\p{L}]/gu, "")).filter((w) => w.length > 3 && !STOP.has(w.toLowerCase())))];
-  const ontbrekend = themaWoorden.filter((w) => !tekstStammen.has(stam(w)));
+  const ontbrekend = themaWoorden.filter((w) => !inTekst(w, tekstWoorden, tekstStammen));
   if (ontbrekend.length && tekst) {
     uit.push({
       soort: "thema", ernst: "hoog",
@@ -139,7 +149,7 @@ export function signalen(x: Dossier, gedachte?: string | null, d?: DatabaseSync)
     ].filter((k) => !raakt(k.label));
     if (kandidaten.length) uit.push({ soort: "verband", ernst: "middel", titel: `Je gedachte noemt ${Math.min(5, kandidaten.length)} mogelijk relevante gedeelten niet`, toelichting: `${kandidaten.slice(0, 5).map((k) => `${k.label} — ${k.waarom}`).join("; ")}. Gevonden via gedeelde zeldzame woorden en kruisverwijzingen: sommige zijn inhoudelijk sterk, andere toevallig woordgebruik.`, actie: "Ga na of deze gedeelten je gedachte bevestigen, nuanceren of tegenspreken — en welke alleen een woord delen.", verzen: kandidaten.slice(0, 5).map((k) => k.label) });
     const woorden = [...new Set(gedachte.split(/[^\p{L}-]+/u).filter((w) => w.length >= 6 && !GEWOON.has(w.toLowerCase()) && !BOEKNAMEN.has(w.toLowerCase())))];
-    const buiten = woorden.filter((w) => !tekstStammen.has(stam(w)) && !ontbrekend.includes(w)).slice(0, 6);
+    const buiten = woorden.filter((w) => !inTekst(w, tekstWoorden, tekstStammen) && !ontbrekend.includes(w)).slice(0, 6);
     if (buiten.length && tekst) uit.push({ soort: "thema", ernst: "middel", titel: `Begrippen uit je gedachte die niet in de tekst staan`, toelichting: `${buiten.map((w) => `‘${w}’`).join(", ")} komen niet voor in de focus- en contexttekst (SV/BSB). Soms is dat een vertaalkwestie of een synoniem; soms leg je er een eigen kader op.`, actie: "Ga per begrip na: staat het (met een ander woord) in de tekst, of komt het uit je eigen theologische kader?" });
     const omstreden = x.beweringen.filter((b) => b.niveau === "omstreden");
     if (omstreden.length) uit.push({ soort: "bewijs", ernst: "middel", titel: `${omstreden.length} punten in je dossier zijn omstreden`, toelichting: omstreden.slice(0, 3).map((b) => `${b.id}: ${b.tekst.slice(0, 140)}`).join(" · "), actie: "Kijk of je gedachte op een van deze punten leunt; zo ja, benoem de keuze en het alternatief." });
