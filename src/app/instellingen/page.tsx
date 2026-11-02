@@ -19,6 +19,7 @@ export default function Instellingen() {
   const [controle, setControle] = useState<X | null>(null);
   const [bezig, setBezig] = useState(false);
   const [melding, setMelding] = useState<string | null>(null);
+  const [testBezig, setTestBezig] = useState(false);
 
   const laad = async () => {
     const j = await (await fetch("/api/instellingen")).json();
@@ -47,6 +48,14 @@ export default function Instellingen() {
     setControle(await r.json());
     setBezig(false);
   }
+  async function testAi() {
+    setTestBezig(true);
+    const r = await fetch("/api/instellingen/verbindingstest", { method: "POST" });
+    const j = await r.json();
+    setX({ ...x, verbinding: r.ok ? j : { ...x.verbinding, melding: j.fout } });
+    setTestBezig(false);
+  }
+  const KLEUR: Record<string, string> = { werkt: "n-direct_aangetoond", niet_getest: "n-niet_geverifieerd", geen_aanbieder: "n-niet_geverifieerd", sleutel_ontbreekt: "n-niet_geverifieerd" };
   const lijst = (k: string) => (i[k] ?? []).join(", ");
 
   return (
@@ -60,7 +69,15 @@ export default function Instellingen() {
 
       <div className="kaart">
         <h2 style={{ marginTop: 0 }}>AI-verbinding</h2>
-        <p className={x.ai.actief ? "" : "melding"}>{x.ai.actief ? `Actief: ${x.ai.model}` : x.ai.reden}</p>
+        <div className="rij" style={{ alignItems: "center" }}>
+          <span className={`label ${KLEUR[x.verbinding.toestand] ?? "n-omstreden"}`}>{x.verbinding.tekst}</span>
+          {x.verbinding.model && <span className="zacht-tekst">{x.verbinding.model}</span>}
+          {x.verbinding.getestOp && <span className="zacht-tekst">getest {x.verbinding.getestOp.slice(0, 16).replace("T", " ")}</span>}
+          {!["geen_aanbieder", "sleutel_ontbreekt"].includes(x.verbinding.toestand) && <button className="zacht" type="button" onClick={testAi} disabled={testBezig}>{testBezig ? "Testen…" : "Test verbinding (gratis)"}</button>}
+        </div>
+        {x.verbinding.melding && <p className="zacht-tekst">{x.verbinding.melding}</p>}
+        <p className="zacht-tekst">De verbindingstest vraagt alleen modelinformatie op en genereert geen tekst: hij kost niets. Sla eerst je instellingen op als je aanbieder, model of sleutel hebt gewijzigd.</p>
+        <p>AI-kosten deze maand: <b>${x.verbinding.maandBestedingUsd.toFixed(3)}</b> van ${x.verbinding.maandbudgetUsd} maandbudget. Elke AI-stap wordt vooraf in het slechtste geval geraamd en geweigerd als hij het onderzoeks- of maandbudget kan overschrijden. Preekhulp schakelt nooit zelf over naar een duurder model.</p>
         <p className="zacht-tekst">Preekhulp gebruikt nooit het Claude Code-abonnement. Voor AI is een eigen API-sleutel of een lokaal model (Ollama) nodig. Zonder AI werken tekst, grondtaal, bronnen, eigen documenten en dossiers gewoon.</p>
         <div className="raster">
           <div><label>Aanbieder</label><select value={i.aiAanbieder} onChange={(e) => setI({ ...i, aiAanbieder: e.target.value })}><option value="geen">Geen AI</option><option value="anthropic">Anthropic (Claude)</option><option value="openai">OpenAI</option><option value="ollama">Lokaal model (Ollama)</option></select></div>
@@ -72,7 +89,7 @@ export default function Instellingen() {
           </>}
           {i.aiAanbieder === "ollama" && <div><label>Ollama-model</label><input value={i.ollamaModel} onChange={(e) => setI({ ...i, ollamaModel: e.target.value })} placeholder="bv. qwen3:14b" /></div>}
           <div><label>Standaard denkinspanning</label><select value={i.inspanning} onChange={(e) => setI({ ...i, inspanning: e.target.value })}>{["low", "medium", "high", "xhigh", "max"].map((m) => <option key={m}>{m}</option>)}</select></div>
-          <div><label>Budget per onderzoek (USD)</label><input type="number" step="0.1" min="0" value={i.budgetPerOnderzoekUsd} onChange={(e) => setI({ ...i, budgetPerOnderzoekUsd: Number(e.target.value) })} /></div>
+          <div><label>Onderzoekslimiet per onderzoek (USD)</label><input type="number" step="0.1" min="0" value={i.budgetPerOnderzoekUsd} onChange={(e) => setI({ ...i, budgetPerOnderzoekUsd: Number(e.target.value) })} /></div>
           <div><label>Maandbudget (USD)</label><input type="number" step="1" min="0" value={i.maandbudgetUsd} onChange={(e) => setI({ ...i, maandbudgetUsd: Number(e.target.value) })} /></div>
           <div><label>Eigen documenten naar AI</label><select value={i.eigenDocumentenNaarAi} onChange={(e) => setI({ ...i, eigenDocumentenNaarAi: e.target.value })}><option value="nooit">Nooit (standaard)</option><option value="fragmenten">Alleen relevante fragmenten</option></select></div>
         </div>

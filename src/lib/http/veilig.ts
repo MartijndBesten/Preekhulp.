@@ -10,7 +10,7 @@ import { nu } from "../db";
 export class NetwerkFout extends Error {
   constructor(
     message: string,
-    public readonly soort: "geblokkeerd" | "time-out" | "http" | "te-groot" | "netwerk" | "ongeldig",
+    public readonly soort: "geblokkeerd" | "time-out" | "http" | "te-groot" | "netwerk" | "ongeldig" | "quotum",
     public readonly status?: number,
   ) {
     super(message);
@@ -83,13 +83,34 @@ export interface HaalOpties {
   cacheSeconden?: number; // 0 = niet cachen (bv. bij licentiebeperking)
   geheimeParams?: string[]; // queryparameters die niet in de cachesleutel/logs mogen
   publiekeUrlControle?: boolean;
+  herhalingen?: number; // standaard 2; 0 in tests
 }
 
 export interface HaalResultaat {
   status: number;
   tekst: string;
   uitCache: boolean;
+  verouderd?: boolean; // verlopen cache gebruikt omdat de bron (tijdelijk) niet antwoordde
 }
+
+/** Afkoelperiode per host na HTTP 429: volgende verzoeken worden direct overgeslagen i.p.v. het quotum verder te belasten. */
+const afkoelenTot = new Map<string, number>();
+export function hostAfkoelen(host: string): number {
+  return Math.max(0, (afkoelenTot.get(host) ?? 0) - Date.now());
+}
+export function resetAfkoeling() {
+  afkoelenTot.clear();
+}
+
+function retryAfterMs(h: string | null): number | null {
+  if (!h) return null;
+  const s = Number(h);
+  if (Number.isFinite(s)) return Math.max(0, s * 1000);
+  const t = Date.parse(h);
+  return Number.isFinite(t) ? Math.max(0, t - Date.now()) : null;
+}
+
+const slaap = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function haal(ruwUrl: string, o: HaalOpties): Promise<HaalResultaat> {
   const url = o.publiekeUrlControle ? await controleerPubliekeUrl(ruwUrl) : new URL(ruwUrl);
@@ -108,20 +129,62 @@ export async function haal(ruwUrl: string, o: HaalOpties): Promise<HaalResultaat
     }
   }
 
-  await wachtOpBeurt(url.host);
-  const t0 = Date.now();
-  let r: Response;
-  try {
-    r = await fetch(url, {
-      headers: { "User-Agent": "Preekhulp/0.1 (lokale onderzoeksassistent)", Accept: "application/json, text/*;q=0.8", ...(o.headers ?? {}) },
-      signal: AbortSignal.timeout(o.timeoutMs ?? 20_000),
-      redirect: o.publiekeUrlControle ? "manual" : "follow",
-    });
-  } catch (e) {
-    const fout = e as Error;
-    const soort = fout.name === "TimeoutError" ? "time-out" : "netwerk";
-    logAanroep(o, url.host, null, Date.now() - t0, false, soort);
-    throw new NetwerkFout(soort === "time-out" ? `Time-out bij ${url.host}` : `Geen verbinding met ${url.host}`, soort);
+  const verlopenCache = (): HaalResultaat | null => {
+    if (!o.db || cacheS <= 0) return null;
+    const c = o.db.prepare("SELECT status, inhoud FROM http_cache WHERE sleutel = ?").get(sleutel) as { status: number; inhoud: string } | undefined;
+    return c ? { status: c.status, tekst: c.inhoud, uitCache: true, verouderd: true } : null;
+  };
+
+  const wacht = hostAfkoelen(url.host);
+  if (wacht > 0) {
+    logAanroep(o, url.host, 429, 0, false, "afkoelperiode");
+    const oud = verlopenCache();
+    if (oud) return oud;
+    throw new NetwerkFout(`${url.host}: quotum bereikt (HTTP 429); nog ±${Math.ceil(wacht / 1000)} s afkoelen. Het onderzoek gaat verder met andere bronnen.`, "quotum", 429);
+  }
+
+  // Maximaal 2 herhalingen bij 429/5xx/netwerkfout, met Retry-After of exponentiële backoff (±1 s, ±3 s), samen hooguit ~20 s.
+  const maxPogingen = o.herhalingen ?? 2;
+  let r: Response | null = null;
+  let t0 = Date.now();
+  for (let poging = 0; ; poging++) {
+    await wachtOpBeurt(url.host);
+    t0 = Date.now();
+    try {
+      r = await fetch(url, {
+        headers: { "User-Agent": "Preekhulp/0.2 (lokale onderzoeksassistent; Denckh)", Accept: "application/json, text/*;q=0.8", ...(o.headers ?? {}) },
+        signal: AbortSignal.timeout(o.timeoutMs ?? 20_000),
+        redirect: o.publiekeUrlControle ? "manual" : "follow",
+      });
+    } catch (e) {
+      const fout = e as Error;
+      const soort = fout.name === "TimeoutError" ? "time-out" : "netwerk";
+      logAanroep(o, url.host, null, Date.now() - t0, false, soort);
+      if (poging < maxPogingen) {
+        await slaap(1000 * 3 ** poging);
+        continue;
+      }
+      const oud = verlopenCache();
+      if (oud) return oud;
+      throw new NetwerkFout(soort === "time-out" ? `Time-out bij ${url.host}` : `Geen verbinding met ${url.host}`, soort);
+    }
+    if ((r.status === 429 || r.status >= 500) && poging < maxPogingen) {
+      const ra = retryAfterMs(r.headers.get("retry-after"));
+      logAanroep(o, url.host, r.status, Date.now() - t0, false, "herhaling");
+      if (r.status === 429 && ra !== null && ra > 15_000) break; // te lang wachten: niet blokkeren, afkoelen
+      await slaap(Math.min(ra ?? 1000 * 3 ** poging + Math.floor(Math.random() * 300), 15_000));
+      continue;
+    }
+    break;
+  }
+  if (!r) throw new NetwerkFout(`Geen antwoord van ${url.host}`, "netwerk");
+  if (r.status === 429) {
+    const ra = retryAfterMs(r.headers.get("retry-after"));
+    afkoelenTot.set(url.host, Date.now() + Math.min(ra ?? 60_000, 3_600_000));
+    logAanroep(o, url.host, 429, Date.now() - t0, false, "quotum");
+    const oud = verlopenCache();
+    if (oud) return oud;
+    throw new NetwerkFout(`${url.host}: quotum bereikt (HTTP 429). ${url.host === "api.openalex.org" ? "Een gratis OpenAlex-sleutel verhoogt het dagbudget (Instellingen). " : ""}Het onderzoek gaat verder met andere bronnen.`, "quotum", 429);
   }
   if (o.publiekeUrlControle && r.status >= 300 && r.status < 400) {
     const naar = r.headers.get("location");

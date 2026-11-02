@@ -1,4 +1,4 @@
-// Prijzen in USD per miljoen tokens (Anthropic-tabel, peildatum 6-10-2026, zie bibliotheek B86).
+// Prijzen in USD per miljoen tokens (Anthropic-tabel, gecontroleerd 01-11-2026 op platform.claude.com; zie bibliotheek B86).
 // OpenAI: prijzen verschillen per model en zijn hier bewust NIET ingevuld — vul ze in bij Instellingen,
 // anders weigert Preekhulp live aanroepen (geen budgetbewaking zonder prijs).
 export interface Prijs {
@@ -14,11 +14,10 @@ export const ANTHROPIC_PRIJZEN: Record<string, Prijs> = {
   "claude-fable-5-1": { invoer: 10, uitvoer: 50, cacheLezen: 0.25 },
 };
 
+/** Keuze in de interface: alleen Sonnet en Opus (opdracht 01-11-2026). Geen automatische overstap naar een duurder model. */
 export const ANTHROPIC_MODELLEN = [
-  { id: "claude-opus-5-5", label: "Claude Opus 5.5 (standaard: diepgaand)" },
-  { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5 (sneller, goedkoper)" },
-  { id: "claude-haiku-5-5", label: "Claude Haiku 5.5 (zeer goedkoop, minder diepgang)" },
-  { id: "claude-fable-5-1", label: "Claude Fable 5.1 (meest capabel, duurst)" },
+  { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5 — standaard ($2 / $10 per miljoen tokens in/uit)" },
+  { id: "claude-opus-5-5", label: "Claude Opus 5.5 — diepgaander, 2× zo duur ($4 / $20 per miljoen tokens)" },
 ];
 
 /** Bovengrens van het aantal invoertokens: 1 token per 2 tekens (bewust ruim; B86). */

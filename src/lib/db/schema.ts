@@ -169,4 +169,12 @@ export const MIGRATIES: string[] = [
   );
   CREATE INDEX beweringen_onderzoek ON beweringen(onderzoek, sectie, volgorde);
   `,
+  // 3: statusladder — welke fragmenten zijn werkelijk aan de AI voorgelegd; per bron een relevantiescore.
+  `
+  ALTER TABLE onderzoek_bewijs ADD COLUMN naar_ai INTEGER NOT NULL DEFAULT 0;
+  `,
+  // 4: extractiewaarschuwingen per document (gescande pagina's, tabellen, paginanummering).
+  `
+  ALTER TABLE documenten ADD COLUMN waarschuwingen TEXT NOT NULL DEFAULT '[]';
+  `,
 ];

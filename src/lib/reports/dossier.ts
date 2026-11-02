@@ -5,6 +5,7 @@ import { json } from "../db";
 import { bewijsRijen, type BewijsRij } from "../research/bewijs";
 import { stapUitvoer, type UitvoerA, type UitvoerB, type UitvoerC, type UitvoerD, type UitvoerE, type UitvoerG } from "../research/stappen";
 import { STAPPEN, type Modus } from "../research/types";
+import type { UitvoerV } from "../research/verdieping";
 import { verzen, woorden } from "../scripture/data";
 import { NIVEAU_LABEL, type Controle, type Niveau, type Verwijzing } from "../verification/claims";
 
@@ -36,6 +37,29 @@ export interface DossierBron {
   labels: string[];
   beoordeling: { relevantie: number | null; perspectief: string; waarom: string } | null;
   traditie: string | null;
+  ladder: Ladder;
+}
+
+/** Statusladder per bron (1 bereikbaar · 2 zoekopdracht gelukt · 3 relevant · 4 volledige inhoud · 5 geanalyseerd · 6 geverifieerd). */
+export interface Ladder {
+  niveau: 1 | 2 | 3 | 4 | 5 | 6;
+  tekst: string;
+}
+export const LADDER_TEKST = ["", "API bereikbaar", "zoekopdracht gelukt", "relevante bron", "volledige inhoud", "inhoud geanalyseerd", "citaat geverifieerd"] as const;
+
+/** Eén rij van de claim-bronmatrix: wat beweert de AI, op welk bewijs, met welke tussenstap en welke tegenargumenten. */
+export interface MatrixRij {
+  claim: string;
+  sectie: string;
+  tekst: string;
+  niveau: Niveau;
+  voorgesteld: Niveau | null;
+  bewijs: { label: string; bron: string; locatie: string; soort: string; citaat: string | null; citaatGeverifieerd: boolean }[];
+  interpretatieveStap: string | null;
+  tegenverwijzingen: { label: string; bron: string; locatie: string }[];
+  onzekerheid: string | null;
+  steuncontrole: { oordeel: string; toelichting: string } | null;
+  aanpassing: string | null;
 }
 
 export interface Dossier {
@@ -54,7 +78,9 @@ export interface Dossier {
   d: UitvoerD | null;
   e: UitvoerE | null;
   g: UitvoerG | null;
+  v: UitvoerV | null;
   beweringen: DossierBewering[];
+  matrix: MatrixRij[];
   bewijs: BewijsRij[];
   bronnen: DossierBron[];
   focusTekst: { label: string; teksten: Record<string, string> }[];
@@ -73,12 +99,26 @@ export function laadDossier(d: DatabaseSync, id: string): Dossier | null {
     verwijzingen: json<Verwijzing[]>(b.verwijzingen, []), controle: json<Controle>(b.controle, {} as Controle), herkomst: b.herkomst as "ai" | "data", perspectief: b.perspectief ?? null,
   }));
   const bewijs = bewijsRijen(d, id);
+  // Labels die met een letterlijk, in de brontekst teruggevonden citaat in een bewering worden gebruikt
+  // (niet-teruggevonden citaten zijn bij de controle al op null gezet).
+  const geverifieerd = new Set(beweringen.flatMap((b) => b.verwijzingen.filter((v) => v.citaat).map((v) => v.label)));
   const bronRijen = d
     .prepare(`SELECT b.*, ob.beoordeling FROM onderzoek_bronnen ob JOIN bronnen b ON b.id = ob.bron WHERE ob.onderzoek = ? ORDER BY b.connector, b.titel`)
     .all(id) as Record<string, string>[];
   const bronnen: DossierBron[] = bronRijen.map((b) => {
     const beo = json<{ relevantie: number | null; perspectief: string; waarom: string } | null>(b.beoordeling, null);
+    const rijen = bewijs.filter((x) => x.bron === b.id);
+    const lokaal = /^lokaal|^eigen-documenten/.test(b.connector);
+    const inhoud = rijen.some((x) => !["metadata", "abstract"].includes(x.soort)) && ["volledige tekst", "transcript"].includes(b.toegang);
+    const relevant = lokaal || (beo?.relevantie ?? 0) > 0;
+    let niveau: Ladder["niveau"] = 2;
+    if (relevant) niveau = 3;
+    if (relevant && inhoud) niveau = 4;
+    if (niveau === 4 && rijen.some((x) => x.naar_ai)) niveau = 5;
+    if (niveau === 5 && rijen.some((x) => geverifieerd.has(x.label))) niveau = 6;
+    const ladder: Ladder = { niveau, tekst: `${niveau}/6 — ${LADDER_TEKST[niveau]}${!inhoud && relevant ? " (alleen catalogus/abstract: nooit basis voor een inhoudelijke samenvatting)" : ""}` };
     return {
+      ladder,
       id: b.id, titel: b.titel, auteurs: json<string[]>(b.auteurs, []), jaar: b.jaar ?? null, uitgever: b.uitgever ?? null, brontype: b.brontype, url: b.url ?? null,
       doi: b.doi ?? null, toegang: b.toegang, rechten: json<Record<string, string>>(b.rechten, {}), geraadpleegd: b.geraadpleegd, connector: b.connector,
       labels: bewijs.filter((x) => x.bron === b.id).map((x) => x.label), beoordeling: beo && Object.keys(beo).length ? beo : null, traditie: b.traditie ?? null,
@@ -91,10 +131,32 @@ export function laadDossier(d: DatabaseSync, id: string): Dossier | null {
   return {
     id, vraag: o.vraag, modus: o.modus, status: o.status, fout: o.fout, gemaakt: o.gemaakt, kostenUsd: o.kosten_usd, budgetUsd: o.budget_usd,
     stappen: STAPPEN.map((s) => ({ id: s.id, naam: s.naam, status: st.find((x) => x.stap === s.id)?.status ?? "wacht", fout: st.find((x) => x.stap === s.id)?.fout ?? null })),
-    a, b: stapUitvoer(d, id, "B"), c: stapUitvoer(d, id, "C"), d: stapUitvoer(d, id, "D"), e: stapUitvoer(d, id, "E"), g: stapUitvoer(d, id, "G"),
-    beweringen, bewijs, bronnen, focusTekst, sleutelwoorden,
+    a, b: stapUitvoer(d, id, "B"), c: stapUitvoer(d, id, "C"), d: stapUitvoer(d, id, "D"), e: stapUitvoer(d, id, "E"), g: stapUitvoer(d, id, "G"), v: stapUitvoer(d, id, "V"),
+    beweringen, matrix: maakMatrix(beweringen, bewijs), bewijs, bronnen, focusTekst, sleutelwoorden,
   };
 }
+
+function maakMatrix(beweringen: DossierBewering[], bewijs: BewijsRij[]): MatrixRij[] {
+  const per = new Map(bewijs.map((r) => [r.label, r]));
+  const kort = (l: string) => ({ label: l, bron: per.get(l)?.bron_titel ?? "?", locatie: per.get(l)?.locatie ?? "?", soort: per.get(l)?.soort ?? "?" });
+  return beweringen
+    .filter((b) => b.herkomst === "ai")
+    .map((b) => {
+      const c = b.controle as Controle & { matrix?: { interpretatieve_stap: string | null; onzekerheid: string | null; tegenverwijzingen: Verwijzing[] }; steuncontrole?: { oordeel: string; toelichting: string } };
+      return {
+        claim: b.id, sectie: b.sectie, tekst: b.tekst, niveau: b.niveau, voorgesteld: b.voorgesteld,
+        bewijs: b.verwijzingen.map((v) => ({ ...kort(v.label), citaat: v.citaat ?? null, citaatGeverifieerd: !!v.citaat })),
+        interpretatieveStap: c.matrix?.interpretatieve_stap ?? null,
+        tegenverwijzingen: (c.matrix?.tegenverwijzingen ?? []).map((v) => kort(v.label)),
+        onzekerheid: c.matrix?.onzekerheid ?? null,
+        steuncontrole: c.steuncontrole ? { oordeel: c.steuncontrole.oordeel, toelichting: c.steuncontrole.toelichting } : null,
+        aanpassing: c.aangepast ? `${NIVEAU_LABEL[c.aangepast.van]} → ${NIVEAU_LABEL[c.aangepast.naar]}: ${c.aangepast.reden}` : null,
+      };
+    });
+}
+
+export const MATRIX_WAARSCHUWING =
+  "Automatische controle vergelijkt tekst: bestaat het bewijsstuk, staat het citaat er letterlijk in, is het een primaire bron. Dat zegt níet dat de uitleg juist is. De steuncontrole is een AI-oordeel en kan een bewering alleen afwaarderen. Lees bij twijfel de bron zelf.";
 
 export const SECTIES = [
   { nr: 1, id: "vraag", titel: "Onderzoeksvraag en afbakening" },
@@ -193,6 +255,7 @@ export function naarMarkdown(x: Dossier): string {
   md.push(...bw("vergelijking").map((b) => beweringMd(b, x)), "");
 
   md.push(`## 8. Preken en lezingen`);
+  for (const v of x.c?.videos ?? []) md.push(`- Video uit de vraag <${v.url}>: ${v.transcript ? `transcript “${v.transcript}” (${v.labels.length} delen). ` : ""}${v.melding}`);
   const video = x.bronnen.filter((b) => b.brontype === "preek/lezing (video)");
   if (!video.length) md.push(`_Geen video's met gegevens (YouTube-sleutel ontbreekt of geen resultaten)._`);
   for (const b of video) md.push(`- ${b.titel} — ${b.auteurs.join(", ")} (${b.jaar ?? "?"}) <${b.url}> — **${b.toegang === "transcript" ? "transcript beschikbaar" : "alleen metadata; inhoud niet geverifieerd"}**`);
@@ -201,6 +264,13 @@ export function naarMarkdown(x: Dossier): string {
   md.push("");
 
   md.push(`## 9. Nieuwe of onverwachte onderzoekslijnen`, ...bw("lijnen").map((b) => beweringMd(b, x)), "");
+  if (x.v?.onderwerpen.length) {
+    md.push(`### Verdiepingsronde (tweede, gerichte zoekronde)`);
+    for (const o of x.v.onderwerpen) md.push(`- **${o.titel}** (${o.herkomst === "ai" ? "voorgesteld door de analyse" : "datagedreven"}): ${o.waarom} — bewijs ${o.labels.slice(0, 12).join(", ") || "geen"}`);
+    for (const o of x.v.ai?.onderwerpen ?? []) if (o.wat_de_tekst_niet_zegt.length) md.push(`- _Wat de tekst niet zegt (${o.onderwerp}):_ ${o.wat_de_tekst_niet_zegt.join("; ")}`);
+    if (x.v.aiFout) md.push(`- _${x.v.aiFout}_`);
+    md.push(...bw("verdieping").map((b) => beweringMd(b, x)), "");
+  }
 
   md.push(`## 10. Kritische aandachtspunten`);
   for (const r of x.g?.regels ?? []) md.push(`- ${r}`);
@@ -211,6 +281,13 @@ export function naarMarkdown(x: Dossier): string {
   const citaatWeg = x.beweringen.reduce((s, b) => s + (b.controle?.citatenNietGevonden?.length ?? 0), 0);
   md.push(`- Automatische controle: ${verlaagd} beweringen in niveau verlaagd, ${verzonnen} niet-bestaande verwijzingen verwijderd, ${citaatWeg} niet-teruggevonden citaten weggelaten.`, "");
 
+  if (x.matrix.length) {
+    md.push(`### Claim-bronmatrix`, ``, `_${MATRIX_WAARSCHUWING}_`, ``, `| Claim | Niveau | Bewijs (vindplaats) | Interpretatieve stap | Tegenargumenten | Onzekerheid | Steuncontrole |`, `|---|---|---|---|---|---|---|`);
+    const cel = (t: string | null | undefined) => (t ?? "–").replace(/\|/g, "/").replace(/\n+/g, " ");
+    for (const r of x.matrix) md.push(`| ${r.claim}: ${cel(r.tekst.slice(0, 160))} | ${NIVEAU_LABEL[r.niveau]}${r.aanpassing ? ` (${cel(r.aanpassing)})` : ""} | ${cel(r.bewijs.map((b) => `${b.label} ${b.bron.split(" — ")[0]}, ${b.locatie}${b.citaatGeverifieerd ? " ✓citaat" : ""}`).join("; ") || "geen")} | ${cel(r.interpretatieveStap)} | ${cel(r.tegenverwijzingen.map((t) => `${t.label} ${t.locatie}`).join("; ") || null)} | ${cel(r.onzekerheid)} | ${cel(r.steuncontrole ? `${r.steuncontrole.oordeel}: ${r.steuncontrole.toelichting}` : null)} |`);
+    md.push("");
+  }
+
   md.push(`## 11. Mogelijke homiletische verbindingen`, ...(bw("homiletiek").length ? bw("homiletiek").map((b) => beweringMd(b, x)) : ["_Geen AI-analyse uitgevoerd._"]), "");
 
   md.push(`## 12. Openstaande vervolgvragen`);
@@ -219,7 +296,7 @@ export function naarMarkdown(x: Dossier): string {
 
   md.push(`## 13. Bronnenlijst`);
   for (const b of x.bronnen) {
-    md.push(`- ${b.auteurs.join(", ") || "—"}${b.jaar ? ` (${b.jaar})` : ""}. *${b.titel}*.${b.uitgever ? ` ${b.uitgever}.` : ""}${b.doi ? ` DOI ${b.doi}.` : ""}${b.url ? ` <${b.url}>` : ""} — ${b.brontype}; toegang: ${b.toegang}; herbruikbaar: ${b.rechten.herbruikbaar ?? "onbekend"}${b.rechten.licentie ? ` (${b.rechten.licentie})` : ""}; geraadpleegd ${b.geraadpleegd.slice(0, 10)}${b.labels.length ? `; passages ${b.labels.slice(0, 12).join(", ")}${b.labels.length > 12 ? "…" : ""}` : ""}`);
+    md.push(`- ${b.auteurs.join(", ") || "—"}${b.jaar ? ` (${b.jaar})` : ""}. *${b.titel}*.${b.uitgever ? ` ${b.uitgever}.` : ""}${b.doi ? ` DOI ${b.doi}.` : ""}${b.url ? ` <${b.url}>` : ""} — ${b.brontype}; toegang: ${b.toegang}; herbruikbaar: ${b.rechten.herbruikbaar ?? "onbekend"}${b.rechten.licentie ? ` (${b.rechten.licentie})` : ""}; geraadpleegd ${b.geraadpleegd.slice(0, 10)}; ladder ${b.ladder.tekst}${b.labels.length ? `; passages ${b.labels.slice(0, 12).join(", ")}${b.labels.length > 12 ? "…" : ""}` : ""}`);
   }
   md.push("", `### Bronstatus`);
   for (const k of x.c?.connectors ?? []) md.push(`- ${k.naam}: ${k.status}${k.resultaten ? ` (${k.resultaten})` : ""}${k.melding ? ` — ${k.melding}` : ""}`);

@@ -6,7 +6,6 @@ import { BOEK_PER_NR, ontleedVkey } from "../../scripture/books";
 import { labelReeks } from "../../scripture/data";
 import type { BronRecord, Connector, ConnectorContext, Passage } from "../types";
 
-const NIET_LIVE = "Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving).";
 const opties = (ctx: ConnectorContext, dienst: string) => ({ db: ctx.db, onderzoek: ctx.onderzoek, dienst });
 const catalogus = (r: BronRecord): Passage[] => [{ soort: "metadata", locatie: "catalogusgegevens", tekst: `${r.titel}${r.auteurs.length ? " — " + r.auteurs.join(", ") : ""}${r.jaar ? ` (${r.jaar})` : ""}${r.uitgever ? `, ${r.uitgever}` : ""}`, url: r.url }];
 
@@ -18,7 +17,7 @@ export const internetArchive: Connector = {
     licentie: "Per item (licenseurl/rights); 'uitleenbaar' ≠ herbruikbaar", volledigeTekst: "Soms (publiek-domeinitems met tekstlaag)",
     actualiteit: "Continu", kosten: "Gratis", uitvoerbaarheid: "Middel (kwaliteit OCR wisselend)",
     geschiktheidPilot: "Middel — vindplaats voor oude commentaren (Keil-Delitzsch, Gill, Lange e.d.)",
-    status: "gedeeltelijk", statusToelichting: NIET_LIVE + " Alleen metadata; tekst ophalen pas na rechtencontrole per item.", getest: "Niet live getest.",
+    status: "gedeeltelijk", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs bereikbaar met treffers; alleen catalogusgegevens en wisselende kwaliteit (bv. presentatiebestanden). Tekst pas na rechtencontrole per item.", getest: "01-11-2026 live: 2× ok (metadata).",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "nee", verificatie: false, netwerk: true },
   nietBeschikbaar: () => null,
@@ -47,7 +46,7 @@ export const gutendex: Connector = {
     toegangsvoorwaarden: "Gutenberg: geen massale automatische downloads van gutenberg.org; gebruik mirrors/offline-catalogus",
     licentie: "Publiek domein in de VS; per land controleren (NL: 70 jaar na overlijden)", volledigeTekst: "Ja (tekstbestanden)",
     actualiteit: "Continu", kosten: "Gratis", uitvoerbaarheid: "Hoog voor metadata", geschiktheidPilot: "Laag-middel — weinig Bijbelcommentaren",
-    status: "gedeeltelijk", statusToelichting: NIET_LIVE, getest: "Niet live getest.",
+    status: "gedeeltelijk", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): Gutendex weigerde beide keren (HTTP 403) vanaf GitHub Actions; vanaf een thuisnetwerk nog niet getest.", getest: "01-11-2026 live: 2× HTTP 403.",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "nee", verificatie: false, netwerk: true },
   nietBeschikbaar: () => null,
@@ -72,7 +71,7 @@ export const openLibrary: Connector = {
     id: "openlibrary", naam: "Open Library", website: "https://openlibrary.org/", categorie: "Historische commentaren en boeken",
     zoekmogelijkheden: "Titel/auteur/onderwerp", api: "search.json", toegangsvoorwaarden: "Open; uitlenen ≠ hergebruik", licentie: "Catalogusdata CC0",
     volledigeTekst: "Nee (alleen via Internet Archive bij publiek domein)", actualiteit: "Continu", kosten: "Gratis", uitvoerbaarheid: "Hoog",
-    geschiktheidPilot: "Middel — bibliografische controle van boektitels", status: "gedeeltelijk", statusToelichting: NIET_LIVE, getest: "Niet live getest.",
+    geschiktheidPilot: "Middel — bibliografische controle van boektitels", status: "gedeeltelijk", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs bereikbaar met treffers; alleen bibliografische gegevens.", getest: "01-11-2026 live: 2× ok (metadata).",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "nee", verificatie: true, netwerk: true },
   nietBeschikbaar: () => null,
@@ -98,7 +97,7 @@ export const googleBooks: Connector = {
     zoekmogelijkheden: "Titel/auteur/trefwoord, ook binnen gedigitaliseerde boeken", api: "Books API v1 (volumes); sleutel optioneel",
     toegangsvoorwaarden: "Google API-voorwaarden; inhoud alleen bekijken via Google", licentie: "Inhoud niet herbruikbaar (behalve publiek domein-weergave)",
     volledigeTekst: "Nee (alleen beschrijving/fragmentweergave bij Google)", actualiteit: "Continu", kosten: "Gratis binnen quotum", uitvoerbaarheid: "Hoog",
-    geschiktheidPilot: "Middel — vindplaats; nooit inhoud kopiëren", status: "gedeeltelijk", statusToelichting: NIET_LIVE, getest: "Niet live getest.",
+    geschiktheidPilot: "Middel — vindplaats; nooit inhoud kopiëren", status: "gedeeltelijk", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs HTTP 429 zonder sleutel. Alleen vindplaats; nooit inhoud kopiëren.", getest: "01-11-2026 live: 2× HTTP 429.",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "nee", verificatie: true, netwerk: true },
   nietBeschikbaar: () => null,
@@ -131,6 +130,31 @@ export const HELLOAO_COMMENTAREN: Record<string, { naam: string; jaar: string; t
   "jamieson-fausset-brown": { naam: "Jamieson, Fausset & Brown, Commentary", jaar: "1871", traditie: "protestants (Schots/Engels)" },
 };
 
+/**
+ * Vraag de werkelijk beschikbare commentaar-id's op (live proef 01-11-2026: met vaste id's gaf alleen John Gill treffers).
+ * Koppel op naam aan de bekende publiek-domeinwerken; onbekende werken worden niet gebruikt.
+ */
+const PATRONEN: [RegExp, { naam: string; jaar: string; traditie: string }][] = [
+  [/keil|delitzsch/i, HELLOAO_COMMENTAREN["keil-delitzsch"]],
+  [/gill/i, HELLOAO_COMMENTAREN["john-gill"]],
+  [/clarke/i, HELLOAO_COMMENTAREN["adam-clarke"]],
+  [/jamieson|fausset/i, HELLOAO_COMMENTAREN["jamieson-fausset-brown"]],
+];
+export async function helloAoIds(ctx: ConnectorContext): Promise<Record<string, { naam: string; jaar: string; traditie: string }>> {
+  try {
+    const j = await haalJson<{ commentaries?: { id: string; name?: string; englishName?: string }[] }>("https://bible.helloao.org/api/available_commentaries.json", { ...opties(ctx, "helloao"), cacheSeconden: 7 * 24 * 3600 });
+    const uit: Record<string, { naam: string; jaar: string; traditie: string }> = {};
+    for (const c of j.commentaries ?? []) {
+      const naam = `${c.id} ${c.name ?? ""} ${c.englishName ?? ""}`;
+      const hit = PATRONEN.find(([re]) => re.test(naam));
+      if (hit) uit[c.id] = hit[1];
+    }
+    return Object.keys(uit).length ? uit : HELLOAO_COMMENTAREN;
+  } catch {
+    return HELLOAO_COMMENTAREN;
+  }
+}
+
 export const helloAo: Connector = {
   kaart: {
     id: "helloao", naam: "HelloAO Free Use Bible API — publiek-domeincommentaren", website: "https://bible.helloao.org/", categorie: "Historische commentaren en boeken",
@@ -138,7 +162,7 @@ export const helloAo: Connector = {
     toegangsvoorwaarden: "Vrij te gebruiken volgens aanbieder ('free use'); teksten zelf publiek domein", licentie: "Publiek domein (teksten)",
     volledigeTekst: "Ja (per vers)", actualiteit: "Statisch", kosten: "Gratis", uitvoerbaarheid: "Hoog",
     geschiktheidPilot: "Hoog — voegt Keil-Delitzsch toe (belangrijk exegetisch OT-commentaar)",
-    status: "gedeeltelijk", statusToelichting: NIET_LIVE + " URL-patroon afgeleid uit documentatie van een afgeleid project (Pillar Commentary Data).", getest: "Niet live getest.",
+    status: "werkend", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): vier commentaren gekoppeld (Keil-Delitzsch, Gill, Clarke, Jamieson-Fausset-Brown). Gill per vers; de andere drie per perikoop — dan toont Preekhulp de sectie die vóór het gevraagde vers begint, met de vermelding dat dat gecontroleerd moet worden.", getest: "01-11-2026 live: 4/4 commentaren leveren tekst bij Gen 31:13 (3 via perikoopsectie).",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "volledig", verificatie: true, netwerk: true },
   nietBeschikbaar: () => null,
@@ -146,7 +170,7 @@ export const helloAo: Connector = {
     if (!v.refs?.length) return [];
     const uit: { record: BronRecord; passages: Passage[] }[] = [];
     const fouten: string[] = [];
-    for (const [id, meta] of Object.entries(HELLOAO_COMMENTAREN)) {
+    for (const [id, meta] of Object.entries(await helloAoIds(ctx))) {
       const passages: Passage[] = [];
       for (const r of v.refs.slice(0, 3)) {
         const a = ontleedVkey(r.start);
@@ -162,14 +186,29 @@ export const helloAo: Connector = {
             fouten.push((e as Error).message);
             continue;
           }
-          for (const it of j.chapter?.content ?? []) {
-            if (it.type !== "verse" || !it.number) continue;
-            const k = a.boek.nr * 1_000_000 + h * 1000 + it.number;
-            const van = h === a.hoofdstuk ? r.start : -Infinity;
-            const tot = h === b.hoofdstuk ? r.eind : Infinity;
+          const items = (j.chapter?.content ?? []).filter((it) => it.type === "verse" && it.number);
+          const tekstVan = (it: (typeof items)[number]) => (it.content ?? []).map((c) => (typeof c === "string" ? c : c.text ?? "")).join(" ").trim();
+          const van = h === a.hoofdstuk ? r.start : -Infinity;
+          const tot = h === b.hoofdstuk ? r.eind : Infinity;
+          let exact = 0;
+          for (const it of items) {
+            const k = a.boek.nr * 1_000_000 + h * 1000 + it.number!;
             if (k < van || k > tot) continue;
-            const tekst = (it.content ?? []).map((c) => (typeof c === "string" ? c : c.text ?? "")).join(" ").trim();
-            if (tekst) passages.push({ soort: "commentaar", locatie: labelReeks(k, k), tekst, url });
+            const tekst = tekstVan(it);
+            if (tekst) {
+              passages.push({ soort: "commentaar", locatie: labelReeks(k, k), tekst, url });
+              exact++;
+            }
+          }
+          // Veel commentaren (bv. Keil-Delitzsch) bespreken een perikoop onder het eerste vers. Geen exacte treffer?
+          // Neem dan de dichtstbijzijnde vóórgaande sectie, met een eerlijke vindplaats ("sectie vanaf …").
+          if (!exact && h === a.hoofdstuk) {
+            const vers = r.start % 1000;
+            const sectie = items.filter((it) => it.number! < vers).sort((x, y) => y.number! - x.number!)[0];
+            if (sectie && tekstVan(sectie)) {
+              const k = a.boek.nr * 1_000_000 + h * 1000 + sectie.number!;
+              passages.push({ soort: "commentaar", locatie: `${labelReeks(k, k)} e.v. (sectie; bespreekt mogelijk ook ${labelReeks(r.start, r.start)} — controleer)`, tekst: tekstVan(sectie), url });
+            }
           }
         }
       }

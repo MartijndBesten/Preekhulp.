@@ -49,6 +49,18 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run bronnen:proef
+        env:
+          # Optioneel: gratis sleutels als repository-secret; leeg = proef zonder sleutel.
+          PREEKHULP_OPENALEX_KEY: ${{ secrets.PREEKHULP_OPENALEX_KEY }}
+          PREEKHULP_YOUTUBE_KEY: ${{ secrets.PREEKHULP_YOUTUBE_KEY }}
+          PREEKHULP_CORE_KEY: ${{ secrets.PREEKHULP_CORE_KEY }}
+      - name: Proefresultaat bewaren
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bronnenproef
+          path: bronnenproef.json
+          if-no-files-found: ignore
 
   met-open-brondata:
     name: Volledige lokale Genesis 31-integratietest

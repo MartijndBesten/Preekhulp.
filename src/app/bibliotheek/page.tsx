@@ -34,7 +34,7 @@ export default function Bibliotheek() {
     const j = await r.json();
     setBezig(false);
     if (!r.ok) return setMelding({ tekst: j.fout, fout: true });
-    setMelding({ tekst: j.duplicaat ? "Dit bestand staat al in de bibliotheek (zelfde inhoud)." : `Opgeslagen: ${j.delen} tekstdelen geïndexeerd.` });
+    setMelding({ tekst: j.duplicaat ? "Dit bestand staat al in de bibliotheek (zelfde inhoud)." : `Opgeslagen: ${j.delen} tekstdelen geïndexeerd.${j.waarschuwingen?.length ? `\nLet op: ${j.waarschuwingen.join(" ")}` : ""}` });
     (e.target as HTMLFormElement).reset();
     laad();
   }
@@ -66,13 +66,13 @@ export default function Bibliotheek() {
 
       <h2>Zoeken</h2>
       <form className="rij" onSubmit={(e) => { e.preventDefault(); laad(q); }}><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek in eigen documenten" style={{ maxWidth: 420 }} /><button>Zoek</button></form>
-      {treffers.map((t, i) => <div key={i} className="citaat"><b>{t.titel}</b> — {t.locatie}{t.video_id && t.start_sec != null && <> · <a href={`https://www.youtube.com/watch?v=${t.video_id}&t=${Math.floor(t.start_sec)}s`} target="_blank" rel="noreferrer">open op dit tijdstip</a></>}{"\n"}{t.fragment}</div>)}
+      {treffers.map((t, i) => <div key={i} className="citaat"><b>{t.titel}</b> — {t.locatie}{t.video_id && t.start_sec != null && <> · <a href={`https://www.youtube.com/watch?v=${t.video_id}&t=${Math.floor(t.start_sec)}s`} target="_blank" rel="noreferrer">open op dit tijdstip</a></>}{!t.video_id && <> · <a href={`/api/documenten/${t.document}/bestand${t.soort === "pdf" && t.pagina ? `#page=${t.pagina}` : ""}`} target="_blank" rel="noreferrer">{t.soort === "pdf" && t.pagina ? `open origineel op p. ${t.pagina}` : "open origineel"}</a></>}{"\n"}{t.fragment}</div>)}
 
       <h2>Documenten ({docs.length})</h2>
       <div className="kaart"><table><thead><tr><th>Titel</th><th>Soort</th><th>Delen</th><th>Toegevoegd</th><th /></tr></thead><tbody>
-        {docs.map((d) => <tr key={d.id}><td><button className="ref" onClick={async () => setOpen(await (await fetch(`/api/documenten/${d.id}`)).json())}>{d.titel}</button>{d.video_id && <span className="zacht-tekst"> · video ({d.transcript_soort})</span>}</td><td>{d.soort}{d.paginas ? ` · ${d.paginas} p.` : ""}</td><td>{d.delen}</td><td>{d.gemaakt.slice(0, 10)}</td><td><button className="gevaar" onClick={() => verwijder(d.id)}>Verwijderen</button></td></tr>)}
+        {docs.map((d) => <tr key={d.id}><td><button className="ref" onClick={async () => setOpen(await (await fetch(`/api/documenten/${d.id}`)).json())}>{d.titel}</button>{d.video_id && <span className="zacht-tekst"> · video ({d.transcript_soort})</span>}{JSON.parse(d.waarschuwingen || "[]").some((w: string) => /tekstlaag|gescand/.test(w)) && <span className="zacht-tekst"> · deels niet doorzoekbaar</span>}</td><td>{d.soort}{d.paginas ? ` · ${d.paginas} p.` : ""}</td><td>{d.delen}</td><td>{d.gemaakt.slice(0, 10)}</td><td><button className="gevaar" onClick={() => verwijder(d.id)}>Verwijderen</button></td></tr>)}
       </tbody></table></div>
-      {open && <div className="kaart"><div className="rij" style={{ justifyContent: "space-between" }}><b>{open.document.titel}</b><button className="zacht" onClick={() => setOpen(null)}>Sluiten</button></div>{open.delen.slice(0, 200).map((dl: X, i: number) => <div key={i} className="citaat"><b>{dl.locatie}</b>{"\n"}{dl.tekst.slice(0, 1200)}</div>)}</div>}
+      {open && <div className="kaart"><div className="rij" style={{ justifyContent: "space-between" }}><b>{open.document.titel}</b><span className="rij"><a href={`/api/documenten/${open.document.id}/bestand`} target="_blank" rel="noreferrer">Origineel openen</a><button className="zacht" onClick={() => setOpen(null)}>Sluiten</button></span></div>{JSON.parse(open.document.waarschuwingen || "[]").map((w: string, i: number) => <div key={i} className="melding info">{w}</div>)}{open.delen.slice(0, 200).map((dl: X, i: number) => <div key={i} className="citaat"><b>{dl.locatie}</b>{"\n"}{dl.tekst.slice(0, 1200)}</div>)}</div>}
     </>
   );
 }

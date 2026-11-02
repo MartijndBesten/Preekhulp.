@@ -12,10 +12,12 @@ import { ontdubbel, ontleedVerwijzing, vindVerwijzingenInTekst, grenzen, type Bi
 import { ontleedVkey, vkey } from "../scripture/books";
 import { actieveConnectors } from "../sources/registry";
 import { verwijzingenVoorRef, verwijzingenVoorZoekterm } from "../sources/connectors/verwijzingen";
-import { youtubeZoeklink } from "../videos/youtube";
+import { GEEN_TRANSCRIPT, tijdLink, tijdLabel, videoIdsInTekst, youtubeZoeklink } from "../videos/youtube";
 import type { BronRecord, Zoekvraag } from "../sources/types";
 import { controleer, type Niveau, type Verwijzing as VerwijzingT } from "../verification/claims";
 import { ANALYSE_BRON, bewijsMap, bewijsRijen, registreer, type BewijsRij } from "./bewijs";
+import { diverseVolgorde, kenmerken, relevantie } from "./selectie";
+import type { UitvoerV } from "./verdieping";
 import {
   SchemaAnalyse, SchemaBeoordeling, SchemaPerspectief, SchemaTegenlezing, SchemaVraag, SchemaZoekvragen,
   type Analyse, type BeweringT, type Modus, type OnderzoeksOpties, type StapId,
@@ -34,8 +36,8 @@ export interface RunCtx {
 
 export const MODUS_CONFIG: Record<Modus, { externeZoekvragen: number; perConnector: number; bewijsTekens: number; inspanning: Instellingen["inspanning"] | null; ai: StapId[] }> = {
   verkennen: { externeZoekvragen: 3, perConnector: 5, bewijsTekens: 30_000, inspanning: "low", ai: ["A", "E"] },
-  verdiepen: { externeZoekvragen: 8, perConnector: 8, bewijsTekens: 80_000, inspanning: null, ai: ["A", "B", "D", "E", "G"] },
-  kritisch: { externeZoekvragen: 14, perConnector: 10, bewijsTekens: 140_000, inspanning: "high", ai: ["A", "B", "D", "E", "G"] },
+  verdiepen: { externeZoekvragen: 8, perConnector: 8, bewijsTekens: 80_000, inspanning: null, ai: ["A", "B", "D", "E", "V", "G"] },
+  kritisch: { externeZoekvragen: 14, perConnector: 10, bewijsTekens: 140_000, inspanning: "high", ai: ["A", "B", "D", "E", "V", "G"] },
 };
 
 export function stapUitvoer<T>(d: DatabaseSync, id: string, stap: StapId): T | null {
@@ -51,7 +53,7 @@ function aiBeschikbaar(c: RunCtx, stap: StapId): boolean {
   return MODUS_CONFIG[c.modus].ai.includes(stap) && aanbiederStatus(c.instellingen).actief;
 }
 
-async function ai<T extends z.ZodType>(c: RunCtx, stap: string, systeem: string, invoer: string, schema: T, maxTokens: number) {
+export async function ai<T extends z.ZodType>(c: RunCtx, stap: string, systeem: string, invoer: string, schema: T, maxTokens: number) {
   return vraagJson(
     c.d,
     { stap, systeem, invoer, schema, maxTokens, inspanning: MODUS_CONFIG[c.modus].inspanning ?? c.instellingen.inspanning },
@@ -59,7 +61,7 @@ async function ai<T extends z.ZodType>(c: RunCtx, stap: string, systeem: string,
   );
 }
 
-const BASIS_SYSTEEM = `Je bent een kritische, wetenschappelijk geschoolde onderzoeksassistent voor een predikant in de Protestantse Kerk in Nederland (PKN). Je schrijft geen preek; je helpt grondig, eerlijk en controleerbaar onderzoek doen.
+export const BASIS_SYSTEEM = `Je bent een kritische, wetenschappelijk geschoolde onderzoeksassistent voor een predikant in de Protestantse Kerk in Nederland (PKN). Je schrijft geen preek; je helpt grondig, eerlijk en controleerbaar onderzoek doen.
 
 Werkregels:
 1. Feitelijke beweringen over teksten, auteurs en bronnen baseer je uitsluitend op het aangeleverde bewijsmateriaal (labels E1, E2, …). Verzin nooit boeken, auteurs, publicaties, DOI's, paginanummers, citaten of videotijdstippen.
@@ -194,12 +196,16 @@ export async function stapB(c: RunCtx, a: UitvoerA, m: Motiefanalyse | null): Pr
 }
 
 // ================================================================= C — bronnen verzamelen
+/** ok = treffers · deels = treffers maar ook fouten · geen treffers = API bereikbaar zonder resultaat · quotum = HTTP 429 · fout = niet bereikt */
+export type ConnectorStatusC = "ok" | "deels" | "geen treffers" | "quotum" | "fout" | "overgeslagen";
+
 export interface UitvoerC {
   motieven: Motiefanalyse | null;
   motievenContext: Motiefanalyse | null;
-  connectors: { id: string; naam: string; status: "ok" | "fout" | "overgeslagen"; resultaten: number; melding: string | null }[];
+  connectors: { id: string; naam: string; status: ConnectorStatusC; resultaten: number; melding: string | null }[];
   externeBronnen: string[]; // bron-id's
   dataBeweringen: { tekst: string; labels: string[] }[];
+  videos?: { videoId: string; url: string; transcript: string | null; transcriptSoort: string | null; labels: string[]; melding: string }[];
 }
 
 export async function stapC(c: RunCtx, a: UitvoerA, b: UitvoerB): Promise<UitvoerC> {
@@ -327,20 +333,26 @@ export async function stapC(c: RunCtx, a: UitvoerA, b: UitvoerB): Promise<Uitvoe
     taken.push(
       (async () => {
         let n = 0;
+        let geslaagd = 0;
+        let quotum = false;
         let melding: string | null = null;
         for (const q of relevant) {
+          if (quotum) break; // quotum bereikt: deze bron niet verder belasten, onderzoek gaat door met andere bronnen
           try {
             const zv: Zoekvraag = { tekst: q.tekst, taal: q.taal, refs: a.focus ? [a.focus] : [], max: cfg.perConnector };
             const res = await k.zoek(zv, ctx);
+            geslaagd++;
             for (const r of res) {
               for (const p of r.passages.slice(0, 6)) registreer(d, id, r.record, p, `${k.kaart.id}:${q.tekst}`);
               n++;
             }
           } catch (e) {
             melding = (e as Error).message;
+            if ((e as { soort?: string }).soort === "quotum") quotum = true;
           }
         }
-        uit.connectors.push({ id: k.kaart.id, naam: k.kaart.naam, status: melding && !n ? "fout" : "ok", resultaten: n, melding });
+        const status: ConnectorStatusC = n ? (melding ? "deels" : "ok") : quotum ? "quotum" : geslaagd ? "geen treffers" : "fout";
+        uit.connectors.push({ id: k.kaart.id, naam: k.kaart.naam, status, resultaten: n, melding: status === "geen treffers" ? "API bereikbaar, geen treffers op deze zoekvragen" : melding });
       })(),
     );
   }
@@ -358,18 +370,35 @@ export async function stapC(c: RunCtx, a: UitvoerA, b: UitvoerB): Promise<Uitvoe
   }
 
   uit.externeBronnen = (d.prepare("SELECT DISTINCT b.id FROM onderzoek_bronnen ob JOIN bronnen b ON b.id = ob.bron WHERE ob.onderzoek = ? AND b.connector NOT IN ('lokaal-bijbel','lokaal-grondtekst','lokaal-commentaren','analyse','eigen-documenten')").all(id) as { id: string }[]).map((r) => r.id);
+  // YouTube-links in de onderzoeksvraag: alleen met een eigen, rechtmatig transcript inhoudelijk gebruiken.
+  uit.videos = [];
+  for (const vid of videoIdsInTekst(c.vraag).slice(0, 5)) {
+    const url = `https://www.youtube.com/watch?v=${vid}`;
+    const doc = d.prepare("SELECT id, titel, auteur, jaar, transcript_soort FROM documenten WHERE video_id = ? ORDER BY gemaakt DESC").get(vid) as { id: string; titel: string; auteur: string | null; jaar: string | null; transcript_soort: string | null } | undefined;
+    if (!doc) {
+      uit.videos.push({ videoId: vid, url, transcript: null, transcriptSoort: null, labels: [], melding: GEEN_TRANSCRIPT });
+      continue;
+    }
+    const delen = d.prepare("SELECT locatie, start_sec, eind_sec, tekst FROM document_delen WHERE document = ? ORDER BY volgorde LIMIT 60").all(doc.id) as { locatie: string; start_sec: number | null; eind_sec: number | null; tekst: string }[];
+    const record: BronRecord = { connector: "eigen-documenten", extern_id: doc.id, brontype: "preek/lezing (video)", titel: doc.titel, auteurs: doc.auteur ? [doc.auteur] : [], jaar: doc.jaar, url, toegang: "transcript", rechten: { vindbaar: "nee", leesbaar: "ja", downloadbaar: "nee", herbruikbaar: "onbekend", toelichting: "Door de gebruiker aangeleverd transcript" } };
+    const labels = delen.map((p) => registreer(d, id, record, { soort: "transcript", locatie: p.start_sec != null ? `${tijdLabel(p.start_sec)}${p.eind_sec != null ? `–${tijdLabel(p.eind_sec)}` : ""}` : p.locatie, tekst: p.tekst, url: p.start_sec != null ? tijdLink(vid, p.start_sec) : url, start_sec: p.start_sec, eind_sec: p.eind_sec }, `video:${vid}`));
+    uit.videos.push({
+      videoId: vid, url, transcript: doc.titel, transcriptSoort: doc.transcript_soort, labels,
+      melding: doc.transcript_soort === "automatisch" ? "Automatisch gegenereerd transcript: woorden kunnen verkeerd zijn herkend. Controleer een citaat in de video (tijdlink) voordat je het gebruikt." : `Transcript uit je bibliotheek (${doc.transcript_soort ?? "soort onbekend"}).`,
+    });
+  }
   return uit;
 }
 
 // ================================================================= D — bronnen beoordelen
 export interface UitvoerD {
-  beoordelingen: Record<string, { relevantie: number | null; perspectief: string; waarom: string; door: "ai" | "regel" }>;
+  beoordelingen: Record<string, { relevantie: number | null; score?: number; perspectief: string; waarom: string; door: "ai" | "regel" }>;
   verdeling: { brontypes: Record<string, number>; tradities: Record<string, number>; talen: Record<string, number>; perioden: Record<string, number>; toegang: Record<string, number> };
   waarschuwingen: string[];
   aiFout: string | null;
 }
 
-export async function stapD(c: RunCtx, cUit: UitvoerC): Promise<UitvoerD> {
+export async function stapD(c: RunCtx, cUit: UitvoerC, a?: UitvoerA | null): Promise<UitvoerD> {
   const bronnen = c.d
     .prepare(`SELECT DISTINCT b.id, b.titel, b.brontype, b.traditie, b.taal, b.jaar, b.toegang, b.samenvatting, b.auteurs, b.connector
               FROM onderzoek_bronnen ob JOIN bronnen b ON b.id = ob.bron WHERE ob.onderzoek = ?`)
@@ -399,12 +428,21 @@ export async function stapD(c: RunCtx, cUit: UitvoerC): Promise<UitvoerD> {
   if (trad.length && trad.every((t) => /gereformeerd|puriteins|presbyter|protestant/i.test(t))) waarschuwingen.push("Alle commentaren met bekende traditie zijn protestants/gereformeerd. Katholieke, orthodoxe, joodse en historisch-kritische perspectieven zijn niet vertegenwoordigd.");
   if (!bronnen.some((b) => b.brontype === "preek/lezing (video)")) waarschuwingen.push("Geen preken of lezingen met inhoud beschikbaar (YouTube-sleutel of aangeleverd transcript nodig).");
 
+  // Deterministische relevantie (uitlegbaar, altijd): bron zonder aantoonbaar verband met het gedeelte → niet in de analyse.
+  const kmk = kenmerken(a?.focus ?? null, a?.thema ?? null, cUit.motieven);
   const beoordelingen: UitvoerD["beoordelingen"] = {};
-  for (const b of extern) beoordelingen[b.id] = { relevantie: null, perspectief: b.traditie ?? "onbekend", waarom: "Nog niet beoordeeld", door: "regel" };
+  for (const b of extern) {
+    const r = relevantie(b, kmk);
+    beoordelingen[b.id] = { relevantie: r.niveau, score: r.score, perspectief: b.traditie ?? "onbekend", waarom: r.redenen.join("; "), door: "regel" };
+  }
+  const zonderVerband = extern.filter((b) => beoordelingen[b.id].relevantie === 0).length;
+  if (zonderVerband) waarschuwingen.push(`${zonderVerband} van ${extern.length} externe treffers hadden geen aantoonbaar verband met het gedeelte en zijn niet in de analyse gebruikt (wel zichtbaar in de bronnenlijst).`);
+  const relevantExtern = extern.filter((b) => (beoordelingen[b.id].relevantie ?? 0) > 0);
+  if (extern.length && !relevantExtern.length) waarschuwingen.push("Geen van de externe treffers ging aantoonbaar over het gedeelte: moderne wetenschappelijke uitleg ontbreekt in dit dossier.");
 
   let aiFout: string | null = null;
-  if (extern.length && aiBeschikbaar(c, "D")) {
-    const lijst = extern.slice(0, 40);
+  if (relevantExtern.length && aiBeschikbaar(c, "D")) {
+    const lijst = [...relevantExtern].sort((x, y) => (beoordelingen[y.id].score ?? 0) - (beoordelingen[x.id].score ?? 0)).slice(0, 40);
     try {
       const r = await ai(
         c,
@@ -416,7 +454,7 @@ export async function stapD(c: RunCtx, cUit: UitvoerC): Promise<UitvoerD> {
       );
       for (const x of r.data.beoordelingen) {
         const b = lijst[Number(x.bron.replace(/\D/g, "")) - 1];
-        if (b) beoordelingen[b.id] = { relevantie: x.relevantie, perspectief: x.perspectief, waarom: x.waarom, door: "ai" };
+        if (b) beoordelingen[b.id] = { relevantie: x.relevantie, score: beoordelingen[b.id]?.score, perspectief: x.perspectief, waarom: `${x.waarom} (regels: ${beoordelingen[b.id]?.waarom ?? "-"})`, door: "ai" };
       }
     } catch (e) {
       aiFout = (e as Error).message;
@@ -441,15 +479,23 @@ function bewijsVoorPrompt(c: RunCtx, rijen: BewijsRij[], d: UitvoerD | null): st
     const rel = d?.beoordelingen[r.bron]?.relevantie;
     return rel === 0 ? 99 : rel != null ? 9 - rel : 7;
   };
-  const gesorteerd = [...rijen].filter((r) => prioriteit(r) < 99).sort((x, y) => prioriteit(x) - prioriteit(y));
+  const geldig = [...rijen].filter((r) => prioriteit(r) < 99);
+  const intern = geldig.filter((r) => prioriteit(r) < 7 || r.connector === "eigen-documenten").sort((x, y) => prioriteit(x) - prioriteit(y));
+  // Externe bronnen: hoogste relevantie eerst, afwisselend per vindplaats (geen eenzijdig blok van één API).
+  const extern = diverseVolgorde(
+    geldig.filter((r) => !intern.includes(r)).map((r) => ({ r, score: d?.beoordelingen[r.bron]?.score ?? (d?.beoordelingen[r.bron]?.relevantie ?? 1) / 3, groep: r.connector })),
+  ).map((x) => x.r);
   const gekozen: { label: string; type: string; herkomst: string; tekst: string }[] = [];
   let totaal = 0;
-  for (const r of gesorteerd) {
+  for (const r of [...intern, ...extern]) {
     const t = r.tekst.length > 2600 ? r.tekst.slice(0, 2600) + " […ingekort]" : r.tekst;
     if (totaal + t.length > max) continue;
     totaal += t.length;
     gekozen.push({ label: r.label, type: `${r.soort}; ${r.brontype}; toegang: ${r.toegang}`, herkomst: `${r.bron_titel} — ${r.locatie}`, tekst: t });
   }
+  // Vastleggen welke fragmenten werkelijk aan de AI zijn voorgelegd (statusladder: 'inhoud geanalyseerd').
+  const markeer = c.d.prepare("UPDATE onderzoek_bewijs SET naar_ai = 1 WHERE onderzoek = ? AND label = ?");
+  for (const g of gekozen) markeer.run(c.id, g.label);
   return promptBronnen(gekozen);
 }
 
@@ -590,6 +636,7 @@ export async function stapG(c: RunCtx, a: UitvoerA, dUit: UitvoerD | null, cUit:
       SchemaTegenlezing,
       c.modus === "kritisch" ? 9000 : 6000,
     );
+    pasSteuncontroleToe(c, r.data.steuncontrole);
     return { regels, ai: r.data, aiFout: null };
   } catch (e) {
     return { regels, ai: null, aiFout: (e as Error).message };
@@ -597,16 +644,19 @@ export async function stapG(c: RunCtx, a: UitvoerA, dUit: UitvoerD | null, cUit:
 }
 
 // ================================================================= Beweringen opslaan + controleren
-export function bewaarBeweringen(c: RunCtx, e: UitvoerE, f: UitvoerF, cUit: UitvoerC | null) {
+export function bewaarBeweringen(c: RunCtx, e: UitvoerE, f: UitvoerF, cUit: UitvoerC | null, v: UitvoerV | null = null) {
   c.d.prepare("DELETE FROM beweringen WHERE onderzoek = ?").run(c.id);
   const bewijs = bewijsMap(bewijsRijen(c.d, c.id));
   let volgorde = 0;
   const ins = c.d.prepare("INSERT INTO beweringen (id, onderzoek, sectie, tekst, niveau, voorgesteld_niveau, verwijzingen, controle, herkomst, perspectief, volgorde) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
   let teller = 0;
-  const voeg = (sectie: string, b: BeweringT, herkomst: "ai" | "data", perspectief: string | null = null) => {
+  const voeg = (sectie: string, b: Pick<BeweringT, "tekst" | "niveau" | "verwijzingen"> & Partial<BeweringT>, herkomst: "ai" | "data", perspectief: string | null = null) => {
     const k = controleer(b.niveau, b.verwijzingen, bewijs, b.tekst);
+    // Claim-bronmatrix: tegenbewijs wordt op dezelfde manier gecontroleerd (bestaat het label, staat het citaat er letterlijk?).
+    const tegen = controleer("onderbouwde_interpretatie", b.tegenverwijzingen ?? [], bewijs);
+    const matrix = { interpretatieve_stap: b.interpretatieve_stap ?? null, onzekerheid: b.onzekerheid ?? null, tegenverwijzingen: tegen.verwijzingen, tegenOnbekend: tegen.controle.onbekend };
     teller++;
-    ins.run(`C${teller}`, c.id, sectie, b.tekst, k.niveau, b.niveau, JSON.stringify(k.verwijzingen), JSON.stringify(k.controle), herkomst, perspectief, volgorde++);
+    ins.run(`C${teller}`, c.id, sectie, b.tekst, k.niveau, b.niveau, JSON.stringify(k.verwijzingen), JSON.stringify({ ...k.controle, matrix }), herkomst, perspectief, volgorde++);
   };
   for (const db of cUit?.dataBeweringen ?? []) voeg(db.tekst.startsWith("Tussen ") ? "context" : "grondtaal", { tekst: db.tekst, niveau: "direct_aangetoond", verwijzingen: db.labels.map((l) => ({ label: l, citaat: null })) }, "data");
   const an = e.analyse;
@@ -618,6 +668,12 @@ export function bewaarBeweringen(c: RunCtx, e: UitvoerE, f: UitvoerF, cUit: Uitv
     for (const [veld, sectie] of secties) for (const b of an[veld] as BeweringT[]) voeg(sectie, b, "ai", veld === "bijbelse_theologie" ? "bijbels theoloog" : veld === "dogmatiek" ? "dogmaticus" : null);
   }
   for (const [naam, p] of Object.entries(e.perspectieven ?? {})) for (const b of p.beweringen) voeg(naam === "homileticus" ? "homiletiek" : naam === "exegeet" ? "exegese" : "perspectieven", b, "ai", naam.replace("_", " "));
+  for (const o of v?.ai?.onderwerpen ?? []) {
+    for (const b of o.waarom_in_de_tekst) voeg("verdieping", b, "ai", `verdieping: ${o.onderwerp}`);
+    for (const b of o.wat_uitleggers_zeggen) voeg("verdieping", b, "ai", `verdieping: ${o.onderwerp}`);
+    for (const b of o.samenhang_elders) voeg("verdieping", b, "ai", `verdieping: ${o.onderwerp}`);
+    for (const b of o.alternatieve_verklaringen) voeg("verdieping", b, "ai", `verdieping: ${o.onderwerp} (alternatief)`);
+  }
   for (const l of f.lijnen) voeg("lijnen", { tekst: `${l.titel} — ${l.onderbouwing} (exegetische sterkte: ${l.sterkte})`, niveau: l.niveau, verwijzingen: l.verwijzingen.map((v) => ({ label: v.label, citaat: v.citaat ?? null })) }, l.herkomst, null);
 }
 
@@ -626,3 +682,48 @@ export function nieuwOnderzoekId() {
 }
 export { nu };
 export { leesInstellingen };
+
+
+/**
+ * Steuncontrole door de tegenlezer: draagt het aangehaalde bewijs de concrete bewering? Dit is een AI-oordeel, geen
+ * bewijs; het kan een niveau alleen verlagen, nooit verhogen. "ondersteunt_niet" → niet geverifieerd; "deels" → één trede omlaag.
+ */
+export function pasSteuncontroleToe(c: RunCtx, oordelen: { bewering: string; oordeel: string; toelichting: string }[]) {
+  const volgorde: Niveau[] = ["direct_aangetoond", "onderbouwde_interpretatie", "mogelijke_onderzoekslijn", "niet_geverifieerd"];
+  for (const o of oordelen) {
+    const id = o.bewering.trim().replace(/[^\w-]/g, "");
+    const rij = c.d.prepare("SELECT niveau, controle, herkomst FROM beweringen WHERE onderzoek = ? AND id = ?").get(c.id, id) as { niveau: Niveau; controle: string; herkomst: string } | undefined;
+    if (!rij || rij.herkomst !== "ai") continue;
+    let niveau = rij.niveau;
+    if (o.oordeel === "ondersteunt_niet") niveau = "niet_geverifieerd";
+    else if (o.oordeel === "deels" && niveau !== "omstreden") niveau = volgorde[Math.min(volgorde.length - 1, Math.max(0, volgorde.indexOf(niveau)) + 1)];
+    const controle = json<Record<string, unknown>>(rij.controle, {});
+    controle.steuncontrole = { oordeel: o.oordeel, toelichting: o.toelichting, door: "AI-tegenlezer (geen bewijs; alleen verlagend)" };
+    if (niveau !== rij.niveau) controle.aangepast = { van: rij.niveau, naar: niveau, reden: `Tegenlezer: bewijs ${o.oordeel === "deels" ? "draagt de bewering maar deels" : "draagt de bewering niet"}` };
+    c.d.prepare("UPDATE beweringen SET niveau = ?, controle = ? WHERE onderzoek = ? AND id = ?").run(niveau, JSON.stringify(controle), c.id, id);
+  }
+}
+
+/** Bewijstekst voor een gerichte AI-aanroep (verdiepingsronde): focus + de opgegeven labels, binnen het tekenplafond. */
+export function bewijsVoorLabels(c: RunCtx, labels: string[]): string {
+  const set = new Set(labels);
+  const rijen = bewijsRijen(c.d, c.id).filter((r) => set.has(r.label) || r.herkomst === "tekst:focus" || r.herkomst === "grondtekst:focus");
+  const max = Math.min(MODUS_CONFIG[c.modus].bewijsTekens, 60_000);
+  const gekozen: { label: string; type: string; herkomst: string; tekst: string }[] = [];
+  let totaal = 0;
+  const markeer = c.d.prepare("UPDATE onderzoek_bewijs SET naar_ai = 1 WHERE onderzoek = ? AND label = ?");
+  for (const r of rijen) {
+    if (r.connector === "eigen-documenten" && c.instellingen.eigenDocumentenNaarAi !== "fragmenten") continue;
+    const t = r.tekst.length > 2600 ? r.tekst.slice(0, 2600) + " […ingekort]" : r.tekst;
+    if (totaal + t.length > max) continue;
+    totaal += t.length;
+    gekozen.push({ label: r.label, type: `${r.soort}; ${r.brontype}; toegang: ${r.toegang}`, herkomst: `${r.bron_titel} — ${r.locatie}`, tekst: t });
+    markeer.run(c.id, r.label);
+  }
+  return promptBronnen(gekozen);
+}
+
+export async function stapVUitvoeren(c: RunCtx, a: UitvoerA, cUit: UitvoerC, e: UitvoerE | null): Promise<UitvoerV> {
+  const { stapV } = await import("./verdieping");
+  return stapV(c, a, cUit, e, aiBeschikbaar(c, "V"), async (stap, invoer, schema, maxTokens) => (await ai(c, stap, BASIS_SYSTEEM, invoer, schema, maxTokens)).data, (labels) => bewijsVoorLabels(c, labels));
+}

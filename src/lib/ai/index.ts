@@ -9,9 +9,10 @@ import { z } from "zod";
 import { nu } from "../db";
 import { geheim, leesInstellingen, type AiAanbieder, type Instellingen } from "../settings";
 import { ANTHROPIC_PRIJZEN, kosten, schatTokens, type Prijs } from "./prijzen";
+import { registreerToestand, type Toestand } from "./verbinding";
 
 export class AiFout extends Error {
-  constructor(message: string, public readonly code: "geen_aanbieder" | "geen_sleutel" | "geen_prijs" | "budget" | "weigering" | "api" | "ongeldig_antwoord" | "afgekapt") {
+  constructor(message: string, public readonly code: "geen_aanbieder" | "geen_sleutel" | "geen_prijs" | "budget" | "weigering" | "api" | "ongeldig_antwoord" | "afgekapt", public readonly toestand?: Toestand) {
     super(message);
   }
 }
@@ -103,10 +104,44 @@ export async function vraagJson<T extends z.ZodType>(
     const p = prijsVoor(i)!;
     const res = { ...r, kostenUsd: kosten(p, r.invoerTokens, r.uitvoerTokens) } as AiResultaat<z.infer<T>>;
     log("ok", res, (r as { verzoekId?: string }).verzoekId);
+    if (!nepAanbieder) registreerToestand(d, "werkt");
     return res;
   } catch (e) {
     log(e instanceof AiFout ? e.code : "fout");
+    if (!nepAanbieder && e instanceof AiFout && e.toestand) registreerToestand(d, e.toestand, e.message);
     throw e;
+  }
+}
+
+/**
+ * Vrije-tekstvraag (alleen Anthropic), met dezelfde poorten als vraagJson: sleutel → prijs → slechtste-geval-raming
+ * binnen het opgegeven budget én het maandbudget → pas dan netwerk → gebruik vastleggen (zonder inhoud).
+ * Bedoeld voor de evaluatie (rechtstreeks Claude-onderzoek als vergelijkingsbasis), niet voor de onderzoeksstappen.
+ */
+export async function vraagTekst(d: DatabaseSync, taak: { stap: string; systeem: string; invoer: string; maxTokens: number; model?: string }, ctx: { resterendBudgetUsd: number }): Promise<{ tekst: string; model: string; invoerTokens: number; uitvoerTokens: number; kostenUsd: number; stopReden: string | null }> {
+  const i = { ...leesInstellingen(d), ...(taak.model ? { anthropicModel: taak.model } : {}) };
+  if (nepAanbieder) {
+    const tekst = String(nepAanbieder(taak as unknown as AiTaak<z.ZodType>));
+    return { tekst, model: "nep", invoerTokens: 0, uitvoerTokens: 0, kostenUsd: 0, stopReden: "end_turn" };
+  }
+  if (i.aiAanbieder !== "anthropic" || !geheim("anthropic")) throw new AiFout("Rechtstreekse vraag vereist Anthropic met een ingestelde sleutel.", "geen_sleutel");
+  const p = ANTHROPIC_PRIJZEN[i.anthropicModel];
+  if (!p) throw new AiFout("Geen prijs bekend voor dit model; live aanroep geweigerd.", "geen_prijs");
+  const raming = kosten(p, schatTokens(taak.systeem.length + taak.invoer.length), taak.maxTokens);
+  if (raming > ctx.resterendBudgetUsd) throw new AiFout(`Budget: deze vraag kan tot $${raming.toFixed(3)} kosten, er is $${ctx.resterendBudgetUsd.toFixed(3)} toegestaan.`, "budget");
+  if (bestedingDezeMaand(d) + raming > i.maandbudgetUsd) throw new AiFout(`Maandbudget ($${i.maandbudgetUsd}) zou worden overschreden.`, "budget");
+  const client = new Anthropic({ apiKey: geheim("anthropic")!, baseURL: "https://api.anthropic.com", maxRetries: 2, timeout: 10 * 60 * 1000 });
+  const log = (status: string, inT: number | null, uitT: number | null, k: number, vid: string | null) =>
+    d.prepare("INSERT INTO ai_gebruik (onderzoek, aanbieder, model, stap, invoer_tokens, uitvoer_tokens, cache_tokens, kosten_usd, raming_max_usd, verzoek_id, status, gemaakt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run(null, "anthropic", i.anthropicModel, taak.stap, inT, uitT, null, k, raming, vid, status, nu());
+  try {
+    const resp = await client.messages.create({ model: i.anthropicModel, max_tokens: taak.maxTokens, system: taak.systeem || undefined, messages: [{ role: "user", content: taak.invoer }] });
+    const tekst = resp.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+    const k = kosten(p, resp.usage.input_tokens, resp.usage.output_tokens);
+    log("ok", resp.usage.input_tokens, resp.usage.output_tokens, k, (resp as unknown as { _request_id?: string })._request_id ?? null);
+    return { tekst, model: resp.model, invoerTokens: resp.usage.input_tokens, uitvoerTokens: resp.usage.output_tokens, kostenUsd: k, stopReden: resp.stop_reason ?? null };
+  } catch (e) {
+    log("fout", null, null, 0, null);
+    throw e instanceof AiFout ? e : new AiFout(`Anthropic-fout: ${(e as Error).message.slice(0, 200)}`, "api");
   }
 }
 
@@ -140,10 +175,11 @@ async function viaAnthropic<T extends z.ZodType>(i: Instellingen, taak: AiTaak<T
     };
   } catch (e) {
     if (e instanceof AiFout) throw e;
-    if (e instanceof Anthropic.AuthenticationError) throw new AiFout("Anthropic-sleutel ongeldig of ingetrokken.", "geen_sleutel");
-    if (e instanceof Anthropic.RateLimitError) throw new AiFout("Anthropic: te veel verzoeken of bestedingslimiet bereikt; probeer later.", "api");
-    if (e instanceof Anthropic.BadRequestError) throw new AiFout(`Anthropic weigerde het verzoek: ${e.message.slice(0, 300)}`, "api");
-    if (e instanceof Anthropic.APIConnectionError) throw new AiFout("Geen verbinding met Anthropic.", "api");
+    if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) throw new AiFout("Anthropic-sleutel ongeldig, ingetrokken of zonder rechten.", "geen_sleutel", "authenticatiefout");
+    if (e instanceof Anthropic.NotFoundError) throw new AiFout(`Model ${i.anthropicModel} is niet beschikbaar voor deze sleutel.`, "api", "model_niet_beschikbaar");
+    if (e instanceof Anthropic.RateLimitError) throw new AiFout("Anthropic: te veel verzoeken of bestedingslimiet van de werkruimte bereikt; probeer later. Preekhulp schakelt niet automatisch over naar een ander model.", "api", "quotum_of_budget");
+    if (e instanceof Anthropic.BadRequestError) throw new AiFout(`Anthropic weigerde het verzoek: ${e.message.slice(0, 300)}`, "api", /credit|balance|billing/i.test(e.message) ? "quotum_of_budget" : undefined);
+    if (e instanceof Anthropic.APIConnectionError) throw new AiFout("Geen verbinding met Anthropic.", "api", "netwerk");
     if (e instanceof Anthropic.APIError) throw new AiFout(`Anthropic-fout ${e.status ?? ""}: ${e.message.slice(0, 200)}`, "api");
     throw new AiFout(`Onverwachte fout: ${(e as Error).message}`, "api");
   }
@@ -176,9 +212,9 @@ async function viaOpenAi<T extends z.ZodType>(i: Instellingen, taak: AiTaak<T>) 
     }),
     signal: AbortSignal.timeout(10 * 60 * 1000),
   }).catch(() => {
-    throw new AiFout("Geen verbinding met OpenAI.", "api");
+    throw new AiFout("Geen verbinding met OpenAI.", "api", "netwerk");
   });
-  if (!r.ok) throw new AiFout(`OpenAI-fout HTTP ${r.status}`, r.status === 401 ? "geen_sleutel" : "api");
+  if (!r.ok) throw new AiFout(`OpenAI-fout HTTP ${r.status}`, r.status === 401 ? "geen_sleutel" : "api", r.status === 401 || r.status === 403 ? "authenticatiefout" : r.status === 404 ? "model_niet_beschikbaar" : r.status === 429 ? "quotum_of_budget" : undefined);
   const j = (await r.json()) as { model: string; choices: { message: { content: string | null; refusal?: string | null }; finish_reason: string }[]; usage?: { prompt_tokens: number; completion_tokens: number } };
   const c = j.choices[0];
   if (c?.message.refusal) throw new AiFout("Het model weigerde deze stap.", "weigering");
@@ -207,7 +243,7 @@ async function viaOllama<T extends z.ZodType>(i: Instellingen, taak: AiTaak<T>) 
     }),
     signal: AbortSignal.timeout(30 * 60 * 1000),
   }).catch(() => {
-    throw new AiFout("Ollama is niet bereikbaar op " + basis, "api");
+    throw new AiFout("Ollama is niet bereikbaar op " + basis, "api", "netwerk");
   });
   if (!r.ok) throw new AiFout(`Ollama-fout HTTP ${r.status}`, "api");
   const j = (await r.json()) as { model: string; message?: { content?: string }; prompt_eval_count?: number; eval_count?: number; done_reason?: string };

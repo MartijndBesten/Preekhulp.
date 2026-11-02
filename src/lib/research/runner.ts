@@ -2,11 +2,12 @@
 import type { DatabaseSync } from "node:sqlite";
 import { json, nu } from "../db";
 import { aanbiederStatus, ramingUsd } from "../ai";
-import { leesInstellingen } from "../settings";
+import { leesInstellingen, type Instellingen } from "../settings";
 import {
-  MODUS_CONFIG, bewaarBeweringen, nieuwOnderzoekId, stapA, stapB, stapC, stapD, stapE, stapF, stapG, stapUitvoer,
+  MODUS_CONFIG, bewaarBeweringen, stapVUitvoeren, nieuwOnderzoekId, stapA, stapB, stapC, stapD, stapE, stapF, stapG, stapUitvoer,
   type RunCtx, type UitvoerA, type UitvoerB, type UitvoerC, type UitvoerD, type UitvoerE, type UitvoerF,
 } from "./stappen";
+import type { UitvoerV } from "./verdieping";
 import { STAPPEN, type Modus, type OnderzoeksOpties, type StapId } from "./types";
 
 export interface Raming {
@@ -20,9 +21,10 @@ export interface Raming {
 }
 
 /** Bovengrens van de AI-kosten vóór de start (slechtste geval: volledige max_tokens per aanroep). */
-export function raming(d: DatabaseSync, modus: Modus): Raming {
-  const i = leesInstellingen(d);
-  const st = aanbiederStatus(i);
+/** Raming vooraf. Met `voor` (bv. ander model) wordt ook geraamd als er nog geen sleutel is — voor de evaluatieplanning. */
+export function raming(d: DatabaseSync, modus: Modus, voor?: Partial<Instellingen>): Raming {
+  const i = { ...leesInstellingen(d), ...voor };
+  const st = voor ? { actief: true, reden: null, model: i.anthropicModel } : aanbiederStatus(i);
   const cfg = MODUS_CONFIG[modus];
   const aanroepen: Raming["aanroepen"] = [];
   const voeg = (stap: string, maxTokens: number, invoerTekens: number) => aanroepen.push({ stap, maxTokens, invoerTekens, maxUsd: ramingUsd(i, invoerTekens, maxTokens) });
@@ -33,6 +35,7 @@ export function raming(d: DatabaseSync, modus: Modus): Raming {
     for (const p of ["exegeet", "bijbels theoloog", "dogmaticus", "homileticus"]) voeg(`E — ${p}`, 8000, cfg.bewijsTekens + 8000);
     voeg("E — vergelijking", 14000, cfg.bewijsTekens + 30000);
   } else voeg("E — analyse", modus === "verkennen" ? 7000 : 16000, cfg.bewijsTekens + 8000);
+  if (cfg.ai.includes("V")) voeg("V — verdiepingsronde", modus === "kritisch" ? 9000 : 7000, 60_000);
   if (cfg.ai.includes("G")) voeg("G — tegenlezing", modus === "kritisch" ? 9000 : 6000, cfg.bewijsTekens + 20000);
   const som = aanroepen.every((a) => a.maxUsd !== null) ? aanroepen.reduce((s, a) => s + (a.maxUsd ?? 0), 0) : null;
   return {
@@ -65,12 +68,13 @@ export function isLopend(id: string) {
   return lopend.has(id);
 }
 
-function ctxVoor(d: DatabaseSync, id: string, extra?: string): RunCtx {
+export function ctxVoor(d: DatabaseSync, id: string, extra?: string): RunCtx {
   const o = d.prepare("SELECT * FROM onderzoeken WHERE id = ?").get(id) as { vraag: string; modus: Modus; opties: string; budget_usd: number };
   return { d, id, vraag: o.vraag, modus: o.modus, opties: json<OnderzoeksOpties>(o.opties, {}), instellingen: leesInstellingen(d), budgetUsd: o.budget_usd, extra };
 }
 
 async function voerStapUit<T>(d: DatabaseSync, id: string, stap: StapId, fn: () => Promise<T> | T): Promise<T> {
+  d.prepare("INSERT OR IGNORE INTO onderzoek_stappen (onderzoek, stap, status) VALUES (?,?, 'wacht')").run(id, stap);
   d.prepare("UPDATE onderzoek_stappen SET status = 'bezig', gestart = ?, fout = NULL WHERE onderzoek = ? AND stap = ?").run(nu(), id, stap);
   d.prepare("UPDATE onderzoeken SET status = ?, gewijzigd = ? WHERE id = ?").run(`bezig:${stap}`, nu(), id);
   try {
@@ -102,10 +106,11 @@ export async function voerUit(d: DatabaseSync, id: string): Promise<void> {
     }
     const b = await voerStapUit(d, id, "B", () => stapB(c, a, motieven));
     const cU = await voerStapUit(d, id, "C", () => stapC(c, a, b));
-    const dU = await voerStapUit(d, id, "D", () => stapD(c, cU));
+    const dU = await voerStapUit(d, id, "D", () => stapD(c, cU, a));
     const e = await voerStapUit(d, id, "E", () => stapE(c, a, dU));
+    const v = await voerStapUit(d, id, "V", () => stapVUitvoeren(c, a, cU, e));
     const f = await voerStapUit(d, id, "F", () => stapF(c, a, cU, e));
-    bewaarBeweringen(c, e, f, cU);
+    bewaarBeweringen(c, e, f, cU, v);
     await voerStapUit(d, id, "G", () => stapG(c, a, dU, cU));
     await voerStapUit(d, id, "H", () => ({ samengesteld: nu() }));
     d.prepare("UPDATE onderzoeken SET status = 'klaar', gewijzigd = ? WHERE id = ?").run(nu(), id);
@@ -127,14 +132,15 @@ export async function herhaalStap(d: DatabaseSync, id: string, stap: StapId, ext
     let cU = stapUitvoer<UitvoerC>(d, id, "C")!;
     let dU = stapUitvoer<UitvoerD>(d, id, "D");
     let e = stapUitvoer<UitvoerE>(d, id, "E")!;
-    const volgorde: StapId[] = ["A", "B", "C", "D", "E", "F", "G", "H"];
+    const volgorde: StapId[] = ["A", "B", "C", "D", "E", "V", "F", "G", "H"];
     const vanaf = volgorde.indexOf(stap);
     if (vanaf <= 1) b = await voerStapUit(d, id, "B", () => stapB(c, a, cU?.motieven ?? null));
     if (vanaf <= 2) cU = await voerStapUit(d, id, "C", () => stapC(c, a, b));
-    if (vanaf <= 3) dU = await voerStapUit(d, id, "D", () => stapD(c, cU));
+    if (vanaf <= 3) dU = await voerStapUit(d, id, "D", () => stapD(c, cU, a));
     if (vanaf <= 4) e = await voerStapUit(d, id, "E", () => stapE(c, a, dU));
-    const f = vanaf <= 5 ? await voerStapUit(d, id, "F", () => stapF(c, a, cU, e)) : stapUitvoer<UitvoerF>(d, id, "F")!;
-    if (vanaf <= 5) bewaarBeweringen(c, e, f, cU);
+    const v = vanaf <= 5 ? await voerStapUit(d, id, "V", () => stapVUitvoeren(c, a, cU, e)) : stapUitvoer<UitvoerV>(d, id, "V");
+    const f = vanaf <= 6 ? await voerStapUit(d, id, "F", () => stapF(c, a, cU, e)) : stapUitvoer<UitvoerF>(d, id, "F")!;
+    if (vanaf <= 6) bewaarBeweringen(c, e, f, cU, v);
     await voerStapUit(d, id, "G", () => stapG(c, a, dU, cU));
     await voerStapUit(d, id, "H", () => ({ samengesteld: nu() }));
     d.prepare("UPDATE onderzoeken SET status = 'klaar', gewijzigd = ? WHERE id = ?").run(nu(), id);
