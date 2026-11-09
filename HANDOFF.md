@@ -1,3 +1,5 @@
+> **Kennisoverdracht bijgewerkt — 9 november 2026:** de bibliotheekaanvullingen zijn centraal verwerkt via [workbench #132](https://github.com/MartijndBesten/martijn-ai-workbench/pull/132). Gebruik voortaan [START_HIER.md](https://github.com/MartijndBesten/martijn-ai-workbench/blob/main/bibliotheek/START_HIER.md) en de nummervertaling daar; oudere meldingen hieronder dat de bibliotheek-PR nog openstaat zijn historisch. Dit is uitsluitend kennis-/navigatieonderhoud, geen nieuwe app-test of productrelease.
+
 # HANDOFF — Preekhulp.
 
 **Status:** v0.1 gebouwd en lokaal getest (zonder echte AI); gekoppeld aan Denckh (makersvermelding + productpagina op branch, nog niet live); productpagina live op denckh.nl/preekhulp/; wacht op besluiten V-001 t/m V-004 en het restant van V-005.
