@@ -12,6 +12,8 @@ const SECTIES = [
   ["historisch", "5. Historische commentaren"], ["hedendaags", "6. Hedendaagse uitleg"], ["perspectieven", "7. Theologische perspectieven"], ["preken", "8. Preken en lezingen"],
   ["lijnen", "9. Nieuwe onderzoekslijnen"], ["kritisch", "10. Kritische aandachtspunten"], ["homiletiek", "11. Homiletische verbindingen"], ["vervolg", "12. Vervolgvragen"], ["bronnen", "13. Bronnen"],
 ] as const;
+const VLEK: Record<string, string> = { ontbrekende_context: "Ontbrekende context", niet_genoemd_gedeelte: "Niet genoemd gedeelte", alternatieve_interpretatie: "Alternatieve uitleg", mogelijke_fout: "Mogelijke fout", wetenschappelijk_tegenargument: "Wetenschappelijk tegenargument", homiletische_mogelijkheid: "Homiletische mogelijkheid" };
+const MATRIX_WAARSCHUWING = "Automatische controle vergelijkt tekst: bestaat het bewijsstuk, staat het citaat er letterlijk in, is het een primaire bron. Dat zegt níet dat de uitleg juist is. De steuncontrole is een AI-oordeel en kan een bewering alleen afwaarderen. Lees bij twijfel de bron zelf.";
 const MARKERINGEN = ["relevant", "later lezen", "kritisch perspectief", "gebruikt", "niet relevant"];
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -26,6 +28,9 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
   const [projecten, setProjecten] = useState<{ id: string; titel: string }[]>([]);
   const [markeringen, setMarkeringen] = useState<Record<string, string>>({});
   const [verdiep, setVerdiep] = useState<{ stap: string; extra: string } | null>(null);
+  const [hoofd, setHoofd] = useState<X | null>(null);
+  const [hoofdBezig, setHoofdBezig] = useState(false);
+  const [gedachte, setGedachte] = useState("");
   const [filter, setFilter] = useState<{ type: string; toegang: string; alleenGeverifieerd: boolean }>({ type: "", toegang: "", alleenGeverifieerd: false });
 
   const laad = useCallback(async () => {
@@ -64,6 +69,15 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
     setVerdiep(null);
     setTimeout(laad, 500);
   }
+  async function overHetHoofd(metAi = false) {
+    setHoofdBezig(true);
+    const r = await fetch(`/api/onderzoek/${id}/overhoofd`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(metAi ? { gedachte, ai: true, akkoordRamingUsd: hoofd?.aiMogelijk?.ramingUsd } : { gedachte }) });
+    const j = await r.json();
+    setHoofdBezig(false);
+    if (!r.ok) return setHoofd({ ...(hoofd ?? { signalen: [] }), fout: j.fout });
+    setHoofd(j);
+    if (metAi) laad();
+  }
   async function markeer(bron: string, markering: string) {
     if (!project) return;
     await fetch("/api/bronnen/markeer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project, bron, markering }) });
@@ -82,6 +96,7 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
         {b.controle?.onbekend?.length > 0 && <> · <i>niet-bestaande verwijzingen verwijderd: {b.controle.onbekend.join(", ")}</i></>}
         {b.controle?.citatenNietGevonden?.length > 0 && <> · <i>citaat niet teruggevonden, weggelaten</i></>}
         {b.controle?.alleenAbstractOfMetadata && <> · <i>alleen abstract/catalogus</i></>}
+        {b.controle?.steuncontrole && b.controle.steuncontrole.oordeel !== "ondersteunt" && <> · <i>tegenlezer: {b.controle.steuncontrole.oordeel.replace(/_/g, " ")}</i></>}
       </div>
       {b.verwijzingen.filter((r: X) => r.citaat).map((r: X) => <div className="citaat" key={r.label}>“{r.citaat}” — {r.label}</div>)}
       {b.verwijzingen.some((r: X) => r.label === open) && <BewijsPaneel r={bewijs.get(open!)} />}
@@ -123,6 +138,25 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
         <label style={{ margin: 0 }}>Project voor bronmarkeringen:</label>
         <select value={project} onChange={(e) => setProject(e.target.value)} style={{ width: "auto" }}><option value="">— kies project —</option>{projecten.map((p) => <option key={p.id} value={p.id}>{p.titel}</option>)}</select>
       </div>
+
+      {!bezig && <div className="kaart geen-print" id="overhoofd">
+        <h2 style={{ marginTop: 0 }}>Wat zie ik over het hoofd?</h2>
+        <label>Je voorlopige gedachte of preeklijn (optioneel)</label>
+        <textarea value={gedachte} onChange={(e) => setGedachte(e.target.value)} placeholder="bv. God roept Jakob terug naar Betel, naar de belofte van toen; zo roept God ons in de doop terug naar zijn belofte." style={{ minHeight: 70 }} />
+        <div className="rij" style={{ marginTop: 8 }}><button onClick={() => overHetHoofd()} disabled={hoofdBezig}>{hoofdBezig ? "Controleren…" : hoofd ? "Opnieuw controleren" : "Controleer (gratis)"}</button></div>
+        {!hoofd && <p className="zacht-tekst">Legt je gedachte en je dossier naast de tekst: verhaalelementen en gedeelten die je niet noemt, begrippen die niet in de tekst staan, ontbrekende perspectieven, omstreden punten en zwak bewijs. Daarna kun je de AI laten zoeken naar ontbrekende context, alternatieve uitleg, mogelijke fouten, wetenschappelijke tegenargumenten en homiletische mogelijkheden.</p>}
+        {hoofd && <>
+          {hoofd.fout && <div className="melding fout">{hoofd.fout}</div>}
+          {hoofd.signalen.length === 0 && <p>Geen automatische signalen gevonden. Dat betekent niet dat er niets ontbreekt.</p>}
+          {hoofd.signalen.map((g: X, i: number) => <div key={i} className="bewering"><span className={`label ${g.ernst === "hoog" ? "n-omstreden" : "n-niet_geverifieerd"}`}>{g.soort} · {g.ernst}</span> <b>{g.titel}</b><div>{g.toelichting}</div><div className="meta">→ {g.actie}{g.verzen?.length ? <> · {g.verzen.map((v: string) => <Link key={v} href={`/tekst?ref=${encodeURIComponent(v)}`} style={{ marginRight: 6 }}>{v}</Link>)}</> : null}</div></div>)}
+          <p className="zacht-tekst">Automatische signalen: tekstvergelijking en tellingen, geen oordeel over juistheid.</p>
+          {hoofd.ai ? <>
+            <h3>AI-meelezer ({hoofd.ai.moment.slice(0, 16).replace("T", " ")}, ${hoofd.ai.kostenUsd.toFixed(3)})</h3>
+            {hoofd.ai.gedachte && <p className="zacht-tekst">Bij gedachte: “{hoofd.ai.gedachte.slice(0, 200)}{hoofd.ai.gedachte.length > 200 ? "…" : ""}”</p>}
+            {hoofd.ai.vlekken.map((v: X, i: number) => <div key={i} className="bewering"><span className="label n-mogelijke_onderzoekslijn">{VLEK[v.soort] ?? v.soort}</span> <span className={`label n-${v.niveau}`}>{NIVEAU[v.niveau]}</span> <b>{v.titel}</b><div>{v.waarom}</div><div className="meta">Te onderzoeken: {v.wat_te_onderzoeken}{v.verwijzingen.length ? <> · <Refs v={v.verwijzingen} /></> : " · geen bewijs aangehaald"}{v.aangepast && <> · <i>niveau verlaagd ({v.aangepast})</i></>}</div>{v.verwijzingen.some((r: X) => r.label === open) && <BewijsPaneel r={bewijs.get(open!)} />}</div>)}
+          </> : hoofd.aiMogelijk?.kan ? <div className="rij"><button className="zacht" onClick={() => confirm(`Eén AI-ronde uitvoeren${gedachte.trim() ? " (met je gedachte)" : ""}? Geraamde kosten in het slechtste geval: $${(hoofd.aiMogelijk.ramingUsd ?? 0).toFixed(3)} (binnen het onderzoeksbudget).`) && overHetHoofd(true)} disabled={hoofdBezig}>{hoofdBezig ? "AI leest mee…" : "Laat ook de AI meelezen"}</button><span className="zacht-tekst">max. ${(hoofd.aiMogelijk.ramingUsd ?? 0).toFixed(3)}</span></div> : <p className="zacht-tekst">AI-meelezer niet beschikbaar: {hoofd.aiMogelijk?.reden}</p>}
+        </>}
+      </div>}
 
       <div className="inhoud">
         <nav>{SECTIES.map(([sid, t]) => <a key={sid} href={`#${sid}`}>{t}</a>)}</nav>
@@ -184,12 +218,25 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
 
           <section id="preken" className="kaart">
             <h2>8. Preken en lezingen</h2>
+            {x.c?.videos?.map((v: X) => <div key={v.videoId} className={v.transcript ? "melding info" : "melding"}><a href={v.url} target="_blank" rel="noreferrer">Video uit je vraag ({v.videoId})</a>: {v.transcript ? <><b>{v.transcript}</b> — {v.labels.length} transcriptdelen in het bewijsregister. </> : null}{v.melding}</div>)}
             {x.bronnen.filter((b: X) => b.brontype === "preek/lezing (video)").map((b: X) => <div key={b.id} className="bewering"><a href={b.url} target="_blank" rel="noreferrer">{b.titel}</a> — {b.auteurs.join(", ")} ({b.jaar ?? "?"}) <span className="label n-niet_geverifieerd">{b.toegang === "transcript" ? "transcript" : "alleen metadata — inhoud niet geverifieerd"}</span></div>)}
             {x.bewijs.filter((r: X) => r.soort === "transcript").map((r: X) => <div key={r.label} className="citaat">[{r.label}] {r.locatie}{r.url && <> — <a href={r.url} target="_blank" rel="noreferrer">open op dit tijdstip</a></>}{"\n"}{r.tekst.slice(0, 400)}</div>)}
             <p className="zacht-tekst">Zonder YouTube-sleutel of aangeleverd transcript worden geen video-inhouden geanalyseerd. {x.b?.doorverwijzingen.filter((l: X) => l.bron === "YouTube").map((l: X) => <a key={l.url} href={l.url} target="_blank" rel="noreferrer" style={{ marginRight: 8 }}>{l.label}</a>)}</p>
           </section>
 
-          <section id="lijnen" className="kaart"><h2>9. Nieuwe of onverwachte onderzoekslijnen</h2>{bw("lijnen").map((b: X) => <Bewering key={b.id} b={b} />)}<Verdiep stap="F" tekst="Lijnen opnieuw formuleren" /></section>
+          <section id="lijnen" className="kaart">
+            <h2>9. Nieuwe of onverwachte onderzoekslijnen</h2>
+            {bw("lijnen").map((b: X) => <Bewering key={b.id} b={b} />)}
+            <Verdiep stap="F" tekst="Lijnen opnieuw formuleren" />
+            {x.v?.onderwerpen?.length > 0 && <>
+              <h3>Verdiepingsronde</h3>
+              <p className="zacht-tekst">Een tweede, gerichte zoekronde op onderwerpen die tijdens het onderzoek opvielen: de verzen zelf, kruisverwijzingen (ook naar latere hoofdstukken), historische uitleg en — binnen het zoekbudget — academische treffers.</p>
+              {x.v.onderwerpen.map((o: X) => <div key={o.titel} className="bewering"><b>{o.titel}</b> <span className="zacht-tekst">({o.herkomst === "ai" ? "voorgesteld door de analyse" : "datagedreven"})</span><div className="meta">{o.waarom} · bewijs: {o.labels.length ? <Refs v={o.labels.slice(0, 14).map((l: string) => ({ label: l }))} /> : "geen"}</div>{o.labels.includes(open) && <BewijsPaneel r={bewijs.get(open!)} />}</div>)}
+              {x.v.ai?.onderwerpen?.filter((o: X) => o.wat_de_tekst_niet_zegt.length).map((o: X) => <div key={o.onderwerp} className="melding info"><b>Wat de tekst níet zegt ({o.onderwerp}):</b> {o.wat_de_tekst_niet_zegt.join("; ")}</div>)}
+              {x.v.aiFout && <p className="zacht-tekst">{x.v.aiFout}</p>}
+              {bw("verdieping").map((b: X) => <Bewering key={b.id} b={b} />)}
+            </>}
+          </section>
 
           <section id="kritisch" className="kaart">
             <h2>10. Kritische aandachtspunten</h2>
@@ -198,11 +245,26 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
             {x.g?.ai?.eindoordeel && <p><b>Eindoordeel tegenlezing:</b> {x.g.ai.eindoordeel}</p>}
             {x.g?.aiFout && <div className="melding">{x.g.aiFout}</div>}
             <Verdiep stap="G" tekst="Tegenlezing opnieuw" />
+            {x.matrix?.length > 0 && <details style={{ marginTop: 12 }}>
+              <summary><b>Claim-bronmatrix</b> ({x.matrix.length} AI-beweringen)</summary>
+              <div className="melding">{MATRIX_WAARSCHUWING}</div>
+              <div style={{ overflowX: "auto" }}><table><thead><tr><th>Claim</th><th>Niveau</th><th>Bewijs</th><th>Interpretatieve stap</th><th>Tegenargumenten</th><th>Onzekerheid</th><th>Steuncontrole</th></tr></thead><tbody>
+                {x.matrix.map((r: X) => <tr key={r.claim}>
+                  <td><b>{r.claim}</b> {r.tekst}</td>
+                  <td><span className={`label n-${r.niveau}`}>{NIVEAU[r.niveau]}</span>{r.aanpassing && <div className="zacht-tekst">{r.aanpassing}</div>}</td>
+                  <td>{r.bewijs.length ? r.bewijs.map((b: X) => <div key={b.label}><button className="ref" onClick={() => setOpen(open === b.label ? null : b.label)}>{b.label}</button> {b.bron.split(" — ")[0]}, {b.locatie}{b.citaatGeverifieerd && <span className="zacht-tekst"> · citaat teruggevonden</span>}</div>) : <span className="zacht-tekst">geen</span>}</td>
+                  <td className="zacht-tekst">{r.interpretatieveStap ?? "–"}</td>
+                  <td>{r.tegenverwijzingen.length ? r.tegenverwijzingen.map((t: X) => <div key={t.label}><button className="ref" onClick={() => setOpen(open === t.label ? null : t.label)}>{t.label}</button> {t.locatie}</div>) : <span className="zacht-tekst">niet gevonden</span>}</td>
+                  <td className="zacht-tekst">{r.onzekerheid ?? "–"}</td>
+                  <td className="zacht-tekst">{r.steuncontrole ? `${r.steuncontrole.oordeel.replace(/_/g, " ")}: ${r.steuncontrole.toelichting}` : "–"}</td>
+                </tr>)}
+              </tbody></table></div>
+            </details>}
           </section>
 
           <section id="homiletiek" className="kaart"><h2>11. Mogelijke homiletische verbindingen</h2><p className="zacht-tekst">Aanknopingspunten, geen preek. Toets elke toepassing aan de tekst.</p>{bw("homiletiek").length ? bw("homiletiek").map((b: X) => <Bewering key={b.id} b={b} />) : <p className="zacht-tekst">Geen AI-analyse uitgevoerd.</p>}</section>
 
-          <section id="vervolg" className="kaart"><h2>12. Openstaande vervolgvragen</h2><ul>{[...(x.e?.analyse?.open_vragen ?? []), ...Object.values(x.e?.perspectieven ?? {}).flatMap((p: X) => p.open_vragen), ...(x.g?.ai?.zoekvragen_tegenperspectief ?? []).map((q: string) => `Zoek tegenperspectief: ${q}`)].map((q: string, i: number) => <li key={i}>{q}</li>)}</ul></section>
+          <section id="vervolg" className="kaart"><h2>12. Openstaande vervolgvragen</h2><ul>{[...(x.e?.analyse?.open_vragen ?? []), ...Object.values(x.e?.perspectieven ?? {}).flatMap((p: X) => p.open_vragen), ...(x.g?.ai?.zoekvragen_tegenperspectief ?? []).map((q: string) => `Zoek tegenperspectief: ${q}`)].map((q: string, i: number) => <li key={i}>{q} <Link className="geen-print" href={`/?vraag=${encodeURIComponent(`${x.a?.focus ? `${x.a.refs[0]?.label ?? ""}. ` : ""}${q.replace(/^Zoek tegenperspectief: /, "")}`)}`} style={{ fontSize: 13 }}>onderzoek deze vraag →</Link></li>)}</ul></section>
 
           <section id="bronnen" className="kaart">
             <h2>13. Bronnen</h2>
@@ -214,7 +276,7 @@ export default function OnderzoekPagina({ params }: { params: Promise<{ id: stri
             <table><thead><tr><th>Bron</th><th>Type / toegang / rechten</th><th>Passages</th>{project && <th className="geen-print">Markering</th>}</tr></thead><tbody>
               {bronnen.map((b: X) => <tr key={b.id}>
                 <td>{b.auteurs.slice(0, 3).join(", ")}{b.jaar && ` (${b.jaar})`}. {b.url ? <a href={b.url} target="_blank" rel="noreferrer"><i>{b.titel}</i></a> : <i>{b.titel}</i>}{b.doi && <span className="zacht-tekst"> DOI {b.doi}</span>}{b.beoordeling?.relevantie != null && <div className="zacht-tekst">relevantie {b.beoordeling.relevantie}/3 — {b.beoordeling.waarom}</div>}</td>
-                <td className="zacht-tekst">{b.brontype}<br />{b.toegang}<br />herbruikbaar: {b.rechten.herbruikbaar ?? "onbekend"}{b.rechten.toelichting ? ` — ${b.rechten.toelichting}` : ""}<br />geraadpleegd {b.geraadpleegd.slice(0, 10)}</td>
+                <td className="zacht-tekst">{b.brontype}<br />{b.toegang}<br />herbruikbaar: {b.rechten.herbruikbaar ?? "onbekend"}{b.rechten.toelichting ? ` — ${b.rechten.toelichting}` : ""}<br />geraadpleegd {b.geraadpleegd.slice(0, 10)}<br /><span className={`label ${b.ladder.niveau >= 5 ? "n-direct_aangetoond" : b.ladder.niveau === 4 ? "n-onderbouwde_interpretatie" : "n-niet_geverifieerd"}`} title="1 bereikbaar · 2 zoekopdracht · 3 relevant · 4 volledige inhoud · 5 geanalyseerd · 6 citaat geverifieerd">ladder {b.ladder.tekst}</span></td>
                 <td>{b.labels.slice(0, 8).map((l: string) => <button key={l} className="ref" onClick={() => setOpen(open === l ? null : l)}>{l}</button>)}{b.labels.length > 8 && "…"}</td>
                 {project && <td className="geen-print"><select value={markeringen[b.id] ?? ""} onChange={(e) => markeer(b.id, e.target.value)}><option value="">—</option>{MARKERINGEN.map((m) => <option key={m}>{m}</option>)}</select></td>}
               </tr>)}

@@ -18,7 +18,8 @@
     "data:kerkvaders": "tsx scripts/data-importeren.ts --kerkvaders",
     "bronnen:controleren": "tsx scripts/bronnen-controleren.ts",
     "evaluatie": "tsx scripts/evaluatie.ts",
-    "bronnen:proef": "tsx scripts/externe-bronproef.ts"
+    "bronnen:proef": "tsx scripts/externe-bronproef.ts",
+    "evaluatie:vergelijk": "tsx scripts/evaluatie-vergelijk.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",

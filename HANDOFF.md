@@ -2,77 +2,65 @@
 
 # HANDOFF — Preekhulp.
 
-**Status:** v0.1 gebouwd en lokaal getest (zonder echte AI); gekoppeld aan Denckh (makersvermelding + productpagina op branch, nog niet live); productpagina live op denckh.nl/preekhulp/; wacht op besluiten V-001 t/m V-004 en het restant van V-005.
-**Bijgewerkt:** 2026-11-01 ±13:00 UTC door Claude Code (cloudsessie).
-**Branch:** `claude/onderzoeksassistent-v0-1` (repository `MartijndBesten/Preekhulp.`, was leeg).
-**Volgende actor:** Martijn (vragen V-001 t/m V-005), daarna Claude Code.
+**Status:** technisch pilotklaar voor gebruik **zonder AI** en voor een eerste echte AI-proef; **inhoudelijk niet afgerond**: de echte AI-test met controleerbare bronnen (blinde Genesis 31-evaluatie) is nog niet uitgevoerd (wacht op sleutel en toestemming, V-007).
+**Bijgewerkt:** 2026-11-01 ±18:40 UTC door Claude Code (cloudsessie).
+**Branches:** werk op `claude/afbouw-pilot` → PR naar `claude/onderzoeksassistent-v0-1` (PR #1 is daarin opgenomen als `e81d434`). `main` is niet gewijzigd.
+**Volgende actor:** Martijn (V-007, V-008, V-009), daarna Claude Code (betaalde evaluatieruns + vergelijking).
 
 ## Huidige opdracht
 
-Bouwopdracht "AI-onderzoeksassistent voor predikanten" (Martijn, 01-11-2026), inclusief verplichte referentiecasus Genesis 31. NB: de opdrachttekst kwam afgekapt binnen (de tweede, herhalende versie stopt in §6 bij "Als geen transcript beschikbaar is: Meld dit duidelijk"). De eerste, volledige versie (§0–§18) is als leidend gebruikt; de afgekapte herhaling voegde voor zover ontvangen geen nieuwe eisen toe.
+"CLAUDE CODE — PREEKHULP. VOLLEDIG VERDER AFBOUWEN EN VALIDEREN" (Martijn, 01-11-2026), prioriteiten 1–10: PR #1 integreren → technische kwaliteit → connectors → bronselectie/verificatie → PDF/DOCX → YouTube zonder sleutel → AI-configuratie/budget → Genesis 31-evaluatie voorbereiden → UI → documentatie/overdracht.
 
 ## Statusladder (besloten / gebouwd / bewezen)
 
-| Onderdeel | Besloten | Gebouwd | Bewezen (hoe) |
-|---|---|---|---|
-| Lokale data: SV + Kanttekeningen, BSB, STEP-grondtekst, lexica, morfologie, kruisverwijzingen, Calvijn, Matthew Henry | ja | ja | ja — import 01-11 (31.102 SV-verzen, 59.385 kanttekeningen, 31.086 BSB, ±439.000 woorden, 341.282 kruisverwijzingen, 13.106 Calvijn, 4.259 Henry); steekproef Gen 31:13 woord-voor-woord |
-| Kerkvaders-database (optioneel) | nee (V-004) | ja, standaard uit | import getest (91.561 citaten, 300 auteurs vóór 1900) |
-| Referentieparser NL/EN, reeksen, meerdere delen | ja | ja | unit-tests |
-| Motiefanalyse / interteksten / NT-verbanden / versnummering / tussenliggende hoofdstukken | ja | ja | Gen 31:13 → Gen 28:18–22, 35:1–3, 35:14–16, Gen 32–34, Joh 1:51 via Gen 28:12; Gen 31:55 = Hebr. 32:1 |
-| Workflow A–H, modi, los herhalen van stappen | ja | ja | integratietest zonder AI en met nep-AI; UI-run in browser |
-| Claimcontrole (verzonnen verwijzingen/citaten, niveaus) | ja | ja | unit- en integratietests |
-| AI-aanbieders: Anthropic (officiële SDK), OpenAI, Ollama | ja | ja | **niet live** — alleen nep-aanbieder en budgetweigering zonder netwerk getest (V-001) |
-| Budget/kostenraming/kostenoverzicht | ja | ja | raming berekend; budgetweigering getest |
-| Externe connectors (OpenAlex, PThU via OpenAlex, Crossref, DOAJ, Semantic Scholar, CORE, Unpaywall, Internet Archive, Open Library, Gutenberg, Google Books, HelloAO) | ja | ja | **niet live** (hosts geblokkeerd in cloudsessie); vormtests met voorbeeldantwoorden (V-002) |
-| YouTube (metadata) + transcript-import met tijdlinks + vergelijking | ja | ja | URL/tijdlinks/SRT/VTT getest; API niet live (geen sleutel, V-003); vergelijking alleen typecheck (vereist AI) |
-| Eigen bibliotheek (PDF, DOCX, TXT, MD, SRT, VTT; dedup; verwijderen) | ja | ja | tests voor TXT/MD/SRT/VTT, dedup, verwijderen, type-validatie; **PDF/DOCX-extractie niet met een echt bestand getest** |
-| Projecten, bronmarkeringen | ja | ja | UI geladen; geen aparte test |
-| Dossier 13 onderdelen + Markdown-export + afdrukken | ja | ja | export gegenereerd en gelezen; afdrukweergave niet als PDF gecontroleerd |
-| Logos | ja (alleen doorverwijzing) | ja (ref.ly-link) | linkvorm niet live gecontroleerd |
-| Beveiliging lokaal (Host/Origin, SSRF, uploads, geheimen) | ja | ja | curl-controle Host/Origin; SSRF-unit-tests |
-| Evaluatie Genesis 31 | ja | ja | run **zonder AI** vastgelegd: `evaluatie/resultaten/2026-11-01-verdiepen-zonder-ai.md`; run met AI wacht op V-001 |
+| Onderdeel | Gebouwd | Bewezen (hoe) |
+|---|---|---|
+| PR #1 (strengere claimcontrole, live API-proef, CI) | ja | lokaal 41/41 tests, daarna gemerged (`e81d434`) |
+| Externe bronnen: 429/`Retry-After`/backoff/afkoelen/cache-terugval | ja | `tests/netwerk.test.ts` (4) |
+| Live bronnenproef (statusladder 1–4, alle netwerkconnectors) | ja | 2× GitHub Actions 01-11: HelloAO 4/4 commentaren, Crossref, DOAJ werkend; IA, Open Library metadata; OpenAlex 1× 429/1× ok; PThU bereikbaar, 0 treffers; Semantic Scholar en Google Books 429; Gutenberg 403; CORE/YouTube niet getest (geen sleutel) |
+| Bronselectie (uitlegbare relevantiescore, diversiteit) | ja | `tests/selectie.test.ts`; integratietest |
+| Verdiepingsronde (stap V) | ja | integratietest met nep-AI (Gen 31:19 terafim); zonder AI datagedreven onderwerpen |
+| Claim-bronmatrix, steuncontrole, statusladder 1–6 in dossier en export | ja | integratietests; **AI-kwaliteit onbewezen** |
+| PDF/DOCX met echte bestanden (tekst, meerdere pagina's, voetnoten, 2 kolommen, scan; koppen, tabel, voetnoot) | ja | `tests/documenten-echt.test.ts` (9); origineel openen (PDF op pagina) |
+| YouTube zonder sleutel (link in vraag, oEmbed, transcriptzoeken, tijdlinks) | ja | `tests/youtube.test.ts`, integratietest; API met sleutel niet getest |
+| AI-configuratie: Sonnet standaard/Opus, 7 toestanden, gratis verbindingstest, maandbudget $10 | ja | `tests/verbinding.test.ts` (11, nagebootste HTTP); **geen echte aanroep gedaan** |
+| "Wat zie ik over het hoofd?" (gedachte + dossier; gratis + optionele AI) | ja | integratietests; browser (telefoon) bediend |
+| Genesis 31-evaluatie: 15 punten, 3 varianten, ruwe resultaten, scorekaart, steekproef 5 claims | ja | gratis keten-run `evaluatie/resultaten/2026-11-01-zonder-ai-verdiepen/` + vergelijking; **betaalde runs niet uitgevoerd** |
+| UI telefoon/tablet/desktop | ja | Playwright 390/820/1440 px × 6 pagina's: geen horizontale overloop, geen consolefouten (na reparatie) |
 
-Tests (01-11-2026, `npx vitest run`): **7 bestanden, 37 tests geslaagd**. `npx tsc --noEmit` schoon. `next build` geslaagd. Browsercontrole (Playwright, 1280 px en 390 px): start, onderzoek, dossier, tekst, bronnen, bibliotheek, video, projecten, instellingen — geen consolefouten.
+Tests 01-11-2026 ±18:35 UTC: **13 bestanden, 75 tests geslaagd** (`npx vitest run`); `tsc --noEmit` schoon; `next build` geslaagd; CI (GitHub Actions, Node 24) groen op de laatste gecontroleerde runs.
 
-## Wat de evaluatie zonder AI laat zien (Genesis 31)
+## Wat zonder AI al blijkt (Genesis 31:13, gratis run)
 
-Zelfstandig gevonden en met tekstdata onderbouwd: Gen 28:18–22 als sterkste terugverwijzing (zuil, Betel, gelofte), Gen 35:1–3 en 35:14–16, *nēder/nādar* ('gelofte') in Genesis alleen in 28:20 en 31:13, *mōledet* ('verwantschap') als echo van Gen 12:1, verhaalverloop Gen 32–34 (Esau, Pniël, Sichem) tussen 31 en 35, Joh 1:51 via Gen 28:12, en minder voor de hand liggende verbanden (Num 30, Jes 19:19–21, 2 Kon 10 — Betel en de cultus). Historische uitleg: Kanttekening bij 31:13, Calvijn bij 31:13/31:19 en 28:18–22, Henry bij 31:1–16 en 35:1–5.
-Niet zonder AI: doop-theologie (vraag 8), andere accenten/tradities (vraag 9), en alle homiletische lijnen. Moderne academische discussie ontbrak (externe bronnen geblokkeerd).
+Bewijs aanwezig voor 12 van de 15 beoordelingspunten (Gen 28, 35, 32–34, gelofte, Betel, terafim, Lea/Rachel, Esau, Joh 1:51, commentaren); niet zonder AI: doopverbinding, grenzen van toepassing, tegengeluid, open vragen. "Over het hoofd" signaleert o.a.: ‘belofte’ en ‘doop’ staan niet in de tekst van Gen 31 (de tekst spreekt van Jakobs **gelofte**), de steenhoop van Gilead en de gestreepte/gespikkelde kudde worden niet besproken, geen joodse uitleg, alle uitleggers uit één traditie.
 
-## Gewijzigde/gemaakte bestanden
+## Gewijzigde/gemaakte bestanden (deze opdracht)
 
-Alles nieuw in deze repository: `package.json`, configuratie, `src/` (app en `lib/`), `scripts/`, `tests/`, `evaluatie/`, `docs/ARCHITECTUUR.md`, `docs/BRONKAARTEN.md`, `README.md`, `PROJECT.md`, `HANDOFF.md`, `VRAGEN.md`, `.env.voorbeeld`, `.gitignore`. Brondata en database staan in `.data/` (niet in Git; opnieuw op te bouwen met `npm run data:ophalen && npm run data:importeren`).
+`src/lib/http/veilig.ts`, `src/lib/research/{selectie,verdieping,overhoofd,stappen,runner,types,bewijs}.ts`, `src/lib/reports/dossier.ts`, `src/lib/ai/{index,verbinding,prijzen}.ts`, `src/lib/settings.ts`, `src/lib/documents/import.ts`, `src/lib/db/schema.ts` (migraties 3–4), `src/lib/sources/connectors/{academisch,boeken,lokaal}.ts`, `src/lib/videos/youtube.ts`, API-routes (`documenten/[id]/bestand`, `instellingen/verbindingstest`, `onderzoek/[id]/overhoofd`, `videos/link`), pagina's (dossier, instellingen, bibliotheek, video's, start), `globals.css`, `scripts/{externe-bronproef,bronkaarten,evaluatie,evaluatie-lib,evaluatie-vergelijk}.ts`, `.github/workflows/kwaliteitscontrole.yml`, tests (`netwerk`, `selectie`, `documenten-echt`, `verbinding`, `evaluatie`, uitbreidingen `onderzoek`/`youtube`), fixtures `tests/fixtures/`, `evaluatie/genesis31/{invoer,criteria}.json`, `evaluatie/resultaten/`, docs (`AI_GATEWAY.md`, `KERKVADERS.md`, `BRONKAARTEN.md`, `ARCHITECTUUR.md`), `README.md`, `VRAGEN.md`, dit bestand.
 
 ## Blokkades
 
-- Netwerkbeleid cloudsessie: academische/boek-API's, PThU, CCEL, BibleHub e.d. niet bereikbaar; officiële documentatie (YouTube, OpenAlex, Biblia) kon niet live worden nagelezen. Connectors volgen bekende API-vormen; actuele regels (bv. OpenAlex-sleutels) moeten bij de live test worden gecontroleerd (V-002).
-- Geen AI-sleutel voor de app (bewust niet het Claude Code-abonnement) → interpretatiekwaliteit onbewezen (V-001).
-
-## Koppeling met Denckh (opdracht Martijn 01-11-2026: "Koppel het aan Denckh.nl")
-
-| Onderdeel | Besloten | Gebouwd | Bewezen |
-|---|---|---|---|
-| Makersvermelding in Preekhulp (footer: "Ontwikkeld door" + officiële signatuur met krul, licht/donker, link naar denckh.nl) volgens `bibliotheek/DENCKH_MERKVERMELDING.md` | ja (opdracht) | ja — logobestanden ongewijzigd gekopieerd uit `MartijndBesten/denckh` `public/brand/` | browsercontrole licht en donker; build geslaagd |
-| Productpagina `denckh.nl/preekhulp/` (repo `MartijndBesten/denckh`, branch `claude/preekhulp`, commit `96b98c9`, beslissing B-098, dossier `docs/cases/preekhulp.md`) | ja — akkoord Martijn 01-11-2026 (V-006) | ja — zelfde opbouw als Ouderhulp., vier echte schermen, alleen geteste functies; AI-laag en externe bronnen als "proefronde" | typecheck, lint, build; e2e 21/21 nieuwe controles + interne links; volledige suite loopt vast op bekende homepagetest 320px (O-38 in denckh, ook zonder wijziging) |
-
-Gepubliceerd op 01-11-2026: fast-forward van `main` in `MartijndBesten/denckh` naar `ccc2769` (GitHub Pages-run 54). De makerslink in Preekhulp wijst nu naar `https://denckh.nl/preekhulp/`.
+- Geen Anthropic-sleutel en geen toestemming voor betaalde runs → AI-kwaliteit onbewezen (V-007).
+- Gratis API-quota (429) bij OpenAlex/Semantic Scholar/Google Books zonder sleutel (V-008).
+- Repository is publiek zonder licentie (V-009); zichtbaarheid wijzigt Claude niet.
 
 ## Open vragen
 
-V-001, V-002, V-003, V-004, V-005 (deels) (zie `VRAGEN.md`). V-006 verwerkt. V-005 is deels beantwoord door de opdracht "koppel het aan Denckh.nl" (Denckh als maker); licentie en registratie staan nog open.
+V-007, V-008, V-009 (zie `VRAGEN.md`). V-001 t/m V-006 verwerkt.
 
 ## Volgende stap
 
-1. Martijn beantwoordt V-001 t/m V-005.
-2. Claude: externe connectors live testen en status per bronkaart bijwerken (`npm run bronnen:controleren`, daarna `npx tsx scripts/bronkaarten.ts`).
-3. Claude: Genesis 31-evaluatie met echte AI (Verdiepen en Kritisch), rapporten in `evaluatie/resultaten/`, en de beoordelingstabel laten invullen door de predikant.
-4. Daarna verbeteren op basis van de beoordeling (prompts, bewijsselectie), PDF/DOCX-extractie met echte bestanden testen, en eventueel lokale transcriptie (Whisper) als vervolgstap.
+1. Martijn: V-007 (sleutel in aparte workspace, $10-limiet; akkoord voor maximaal $2,28), V-008, V-009.
+2. Claude: `npm run evaluatie -- --variant sonnet --akkoord`, `--variant opus --akkoord`, `--variant direct --akkoord`, dan `npm run evaluatie:vergelijk`; ruwe resultaten committen.
+3. Martijn/predikant: steekproef (5 claims per variant) controleren en scorekaart invullen; pas dan een oordeel over "beter dan rechtstreeks Claude".
+4. Daarna: prompts en bewijsselectie bijstellen op basis van de scorekaart; eventueel gratis OpenAlex-sleutel in CI.
 
-## Bibliotheekcheck (BOUWSTENEN.md v37, verplicht onderhoud)
+## Bibliotheekcheck (BOUWSTENEN.md v37 op `origin/main`, gelezen 01-11-2026)
 
-Beoordeeld: B86 als patroon gebruikt (geen codewijziging aan B86). Nieuwe herbruikbare onderdelen ontstaan — **kandidaten**: (1) bronconnectorcontract met rechtenmodel (vindbaar/leesbaar/downloadbaar/herbruikbaar) en toegangsstatus; (2) claimcontrole: bewijslabels, letterlijke citaatverificatie en alleen-verlagen van bewijsniveaus; (3) `node:sqlite`+FTS5 als dependency-vrije lokale database in Next.js. **Nog geen bibliotheek-PR ingediend**: eerst bewezen gebruik met echte AI-run (V-001); daarna kaarten via een `bibliotheek/*`-branch en PR naar `main` van de workbench. Geen bestaande kaart is door dit werk verouderd.
+Bibliotheekupdate in **workbench-PR #103** (`bibliotheek/b106-b108-preekhulp`, versie 38), **nog niet op `main`**: B106 (externe API's robuust, CODE), B107 (controleerbare AI-beweringen, KANDIDAAT tot een echte modelrun), B108 (eigen documenten doorzoekbaar, CODE) en een aanvulling op B86 (tweede toepassing in TypeScript, zeven sleuteltoestanden). `bibliotheek-check` en dashboardtest geslaagd. Werkwijze-lessen (o.a. `pkill -f` raakt de eigen shell; layoutoverloop pas zichtbaar met meting per viewport) nog niet in `werkwijze/LESSEN.md` vastgelegd.
 
 ## Overdrachtsnotities
 
-- Data en database niet committen (`.data/` staat in `.gitignore`); geen sleutels in Git — secret-scan op de diff uitgevoerd vóór commit.
-- `PROJECTS.md` van de workbench is niet gewijzigd (alleen ChatGPT; zie V-005).
+- Geen sleutels of klantgegevens in Git; `.data/` genegeerd; diff gecontroleerd vóór commit.
+- Betaalde aanroepen zijn alleen mogelijk met sleutel én (evaluatie) `--akkoord`; in de app altijd met raming vooraf en budgetweigering vóór het netwerk.
+- `PROJECTS.md` van de workbench niet gewijzigd (alleen ChatGPT). Leftover map `/home/user/martijndbesten/denckh` bewust laten staan.

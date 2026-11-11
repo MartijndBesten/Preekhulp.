@@ -1,0 +1,224 @@
+{
+  "variant": "zonder-ai",
+  "datum": "2026-11-01T18:31:18.829Z",
+  "invoer": {
+    "toelichting": "Blinde Genesis 31-test (opdracht 01-11-2026, §12). Exacte testinvoer; de gehouden preek en de reconstructie worden NIET meegegeven. Dezelfde vraag gaat ongewijzigd naar Preekhulp-Sonnet, Preekhulp-Opus en een rechtstreeks Claude-onderzoek.",
+    "context": "PKN-doopdienst, zondag 1 november 2026",
+    "vraag": "Ik bereid een doopdienst voor vanuit Genesis 31:13 met als thema ‘Terug naar de belofte’. Onderzoek de tekst diepgaand vanuit de oorspronkelijke context, grondtaal, Bijbelcommentaren, wetenschappelijke literatuur en uiteenlopende theologische perspectieven. Zoek naar relevante preken en lezingen. Welke nieuwe inzichten zijn mogelijk, welke aannames moeten worden getoetst en welke verbanden met de doop zijn verantwoord?",
+    "opties": {
+      "bijbelgedeelte": "Genesis 31:13",
+      "thema": "Terug naar de belofte",
+      "dienst": "doopdienst",
+      "traditie": "PKN"
+    },
+    "toelichtingOpties": "Alleen velden die letterlijk uit de testinvoer volgen. Het rechtstreekse Claude-onderzoek krijgt uitsluitend de vraag."
+  },
+  "gitCommit": "9610b2bae83ea5681512a6811100044a47dc41d7",
+  "gitBranch": "claude/afbouw-pilot",
+  "node": "v22.23.4",
+  "datasets": [
+    {
+      "naam": "STEPBible-Data (TAHOT, TAGNT, TBESH, TBESG, morfologie)",
+      "commit": "be4191f0082aeedddb0eff0c02c966292b2bd641"
+    },
+    {
+      "naam": "Statenvertaling met Strong-nummers en Kanttekeningen (OSIS)",
+      "commit": "d39d8ee01ca51f27e3e9c50291a96fc32f49b4d2"
+    },
+    {
+      "naam": "Berean Standard Bible + OpenBible.info-kruisverwijzingen",
+      "commit": "2abb53a56a38be023201463b95afaf7d6420ebbd"
+    },
+    {
+      "naam": "Calvijn, commentaren (Engelse vertaling, Calvin Translation Society)",
+      "commit": "ba1587984c5325c0974577f43cba7e7ed10f3274"
+    },
+    {
+      "naam": "Matthew Henry, Complete Commentary (1706–1714)",
+      "commit": "fff64e68c59ee4597a2b451cbe4e207adc77148d"
+    },
+    {
+      "naam": "Historical Christian Faith — Commentaries Database (kerkvaders en latere uitleggers)",
+      "commit": "bbf63b2b1fcdbfa193f595548c45191d42c67117"
+    }
+  ],
+  "ramingUsd": 0,
+  "onderzoek": "o9be23e4e50fb453f",
+  "modus": "verdiepen",
+  "model": null,
+  "modusConfig": {
+    "externeZoekvragen": 8,
+    "perConnector": 8,
+    "bewijsTekens": 80000,
+    "inspanning": null,
+    "ai": [
+      "A",
+      "B",
+      "D",
+      "E",
+      "V",
+      "G"
+    ]
+  },
+  "budgetUsd": 0,
+  "zonderExtern": true,
+  "duurSec": 0.338,
+  "kostenUsd": 0,
+  "status": "klaar",
+  "bronstatus": [
+    {
+      "id": "lokaal",
+      "naam": "Lokale tekst, grondtekst, kruisverwijzingen en commentaren",
+      "status": "ok",
+      "resultaten": 4,
+      "melding": null
+    },
+    {
+      "id": "helloao",
+      "naam": "HelloAO Free Use Bible API — publiek-domeincommentaren",
+      "status": "overgeslagen",
+      "resultaten": 0,
+      "melding": "Alleen lokale bronnen gekozen"
+    },
+    {
+      "id": "openalex",
+      "naam": "OpenAlex",
+      "status": "overgeslagen",
+      "resultaten": 0,
+      "melding": "Alleen lokale bronnen gekozen"
+    },
+    {
+      "id": "pthu",
+      "naam": "Protestantse Theologische Universiteit (via OpenAlex + doorverwijzing)",
+      "status": "overgeslagen",
+      "resultaten": 0,
+      "melding": "Alleen lokale bronnen gekozen"
+    },
+    {
+      "id": "crossref",
+      "naam": "Crossref",
+      "status": "overgeslagen",
+      "resultaten": 0,
+      "melding": "Alleen lokale bronnen gekozen"
+    },
+    {
+      "id": "doaj",
+      "naam": "DOAJ — Directory of Open Access Journals",
+      "status": "overgeslagen",
+      "resultaten": 0,
+      "melding": "Alleen lokale bronnen gekozen"
+    },
+    {
+      "id": "semanticscholar",
+      "naam": "Semantic Scholar",
+      "status": "overgeslagen",
+      "resultaten": 0,
+      "melding": "Alleen lokale bronnen gekozen"
+    },
+    {
+      "id": "internetarchive",
+      "naam": "Internet Archive",
+      "status": "overgeslagen",
+      "resultaten": 0,
+      "melding": "Alleen lokale bronnen gekozen"
+    },
+    {
+      "id": "openlibrary",
+      "naam": "Open Library",
+      "status": "overgeslagen",
+      "resultaten": 0,
+      "melding": "Alleen lokale bronnen gekozen"
+    },
+    {
+      "id": "gutenberg",
+      "naam": "Project Gutenberg (via Gutendex)",
+      "status": "overgeslagen",
+      "resultaten": 0,
+      "melding": "Alleen lokale bronnen gekozen"
+    },
+    {
+      "id": "googlebooks",
+      "naam": "Google Books",
+      "status": "overgeslagen",
+      "resultaten": 0,
+      "melding": "Alleen lokale bronnen gekozen"
+    },
+    {
+      "id": "core",
+      "naam": "CORE (open-access repositories)",
+      "status": "overgeslagen",
+      "resultaten": 0,
+      "melding": "Geen CORE-sleutel ingesteld (gratis aan te vragen bij core.ac.uk)"
+    },
+    {
+      "id": "youtube",
+      "naam": "YouTube Data API v3 (ontdekken van preken en lezingen)",
+      "status": "overgeslagen",
+      "resultaten": 0,
+      "melding": "Geen YouTube-sleutel ingesteld (zie Instellingen). Zonder sleutel: zoeklink naar YouTube."
+    },
+    {
+      "id": "eigen-documenten",
+      "naam": "Eigen bibliotheek",
+      "status": "ok",
+      "resultaten": 0,
+      "melding": null
+    }
+  ],
+  "stappen": [
+    {
+      "id": "A",
+      "naam": "Onderzoeksvraag begrijpen",
+      "status": "klaar",
+      "fout": null
+    },
+    {
+      "id": "B",
+      "naam": "Zoekvragen ontwikkelen",
+      "status": "klaar",
+      "fout": null
+    },
+    {
+      "id": "C",
+      "naam": "Bronnen verzamelen",
+      "status": "klaar",
+      "fout": null
+    },
+    {
+      "id": "D",
+      "naam": "Bronnen beoordelen",
+      "status": "klaar",
+      "fout": null
+    },
+    {
+      "id": "E",
+      "naam": "Exegese en vergelijking",
+      "status": "klaar_zonder_ai",
+      "fout": "Geen AI-aanbieder gekozen (Instellingen). Bronnen, tekstanalyse en dossiers werken wel."
+    },
+    {
+      "id": "V",
+      "naam": "Verdiepingsronde",
+      "status": "klaar_zonder_ai",
+      "fout": "Zonder AI: verdiepingsronde verzamelt alleen bronnen (geen analyse)."
+    },
+    {
+      "id": "F",
+      "naam": "Nieuwe onderzoekslijnen",
+      "status": "klaar",
+      "fout": null
+    },
+    {
+      "id": "G",
+      "naam": "Kritische tegenlezing",
+      "status": "klaar_zonder_ai",
+      "fout": "Geen AI-aanbieder gekozen (Instellingen). Bronnen, tekstanalyse en dossiers werken wel."
+    },
+    {
+      "id": "H",
+      "naam": "Onderzoeksdossier",
+      "status": "klaar",
+      "fout": null
+    }
+  ]
+}

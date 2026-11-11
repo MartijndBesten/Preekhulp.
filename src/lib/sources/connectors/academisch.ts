@@ -6,7 +6,6 @@ import { haalJson } from "../../http/veilig";
 import { geheim } from "../../settings";
 import type { BronRecord, Connector, ConnectorContext, Passage, Zoekvraag } from "../types";
 
-const NIET_LIVE = "Gebouwd volgens de gedocumenteerde API, nog niet live getest (netwerk geblokkeerd in de ontwikkelomgeving).";
 
 function abstractUitOpenAlex(inv?: Record<string, number[]> | null): string | null {
   if (!inv) return null;
@@ -90,7 +89,7 @@ export const openAlex: Connector = {
     toegangsvoorwaarden: "Zonder sleutel beperkt gratis zoeken; gratis OpenAlex-API-sleutel aanbevolen voor structureel gebruik en paging. Dagbudget en tarieven actueel controleren via help.openalex.org.",
     licentie: "Metadata CC0", volledigeTekst: "Nee — alleen links naar open-accessversies",
     ...kaartBasis, geschiktheidPilot: "Hoog als vindplaats academische literatuur",
-    status: "gedeeltelijk", statusToelichting: NIET_LIVE, getest: "Unit-test met vaste voorbeeldrespons (vorm), geen live-aanroep.",
+    status: "gedeeltelijk", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): run 1 HTTP 429, run 2 bereikbaar met relevante treffer ('Genesis 28.10–22: Jacob at Bethel'), alleen abstract/metadata. Zonder sleutel wisselend quotum; gratis sleutel aanbevolen.", getest: "01-11-2026 live: 1× 429, 1× ok (relevant, abstract).",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "abstract", verificatie: false, netwerk: true },
   nietBeschikbaar: () => null,
@@ -107,8 +106,8 @@ export const pthu: Connector = {
     licentie: "Per publicatie", volledigeTekst: "Alleen via open-accesslinks van OpenAlex",
     kosten: "Gratis", actualiteit: "Afhankelijk van OpenAlex-indexering", uitvoerbaarheid: "Middel",
     geschiktheidPilot: "Middel — waardevol voor PKN-context; directe harvesting eerst juridisch/technisch checken",
-    status: "gedeeltelijk", statusToelichting: NIET_LIVE + " De PThU-website was in de ontwikkelomgeving niet bereikbaar; repository-interface niet geverifieerd.",
-    getest: "Niet live getest.",
+    status: "gedeeltelijk", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): bereikbaar, 0 treffers voor deze zoekvraag (run 1: HTTP 429 via OpenAlex).",
+    getest: "01-11-2026 live: bereikbaar, geen treffers.",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "abstract", verificatie: false, netwerk: true },
   nietBeschikbaar: () => null,
@@ -132,7 +131,7 @@ export const crossref: Connector = {
     zoekmogelijkheden: "Bibliografisch zoeken; DOI-verificatie", api: "REST JSON (api.crossref.org/works)",
     toegangsvoorwaarden: "Open; contactadres aanbevolen", licentie: "Metadata grotendeels vrij (CC0-feiten)", volledigeTekst: "Nee",
     ...kaartBasis, geschiktheidPilot: "Hoog voor bibliografische verificatie (bestaat deze DOI/titel echt?)",
-    status: "gedeeltelijk", statusToelichting: NIET_LIVE, getest: "Unit-test met vaste voorbeeldrespons, geen live-aanroep.",
+    status: "werkend", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs bereikbaar met relevante treffer; alleen metadata (geen volledige tekst).", getest: "01-11-2026 live: 2× ok, relevante metadata.",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "abstract", verificatie: true, netwerk: true },
   nietBeschikbaar: () => null,
@@ -186,7 +185,7 @@ export const doaj: Connector = {
     zoekmogelijkheden: "Artikelen in open-accesstijdschriften", api: "REST JSON (doaj.org/api/search/articles/…)",
     toegangsvoorwaarden: "Open", licentie: "Metadata CC0; artikelen per tijdschrift-licentie (vaak CC BY)", volledigeTekst: "Via link naar tijdschrift",
     ...kaartBasis, geschiktheidPilot: "Hoog — o.a. open-access theologie/homiletiek (bv. Int. Journal of Homiletics, Handelingen indien geïndexeerd)",
-    status: "gedeeltelijk", statusToelichting: NIET_LIVE, getest: "Niet live getest.",
+    status: "werkend", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs bereikbaar met relevante treffers (open access, metadata + abstract).", getest: "01-11-2026 live: 2× ok, relevante treffers.",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "abstract", verificatie: false, netwerk: true },
   nietBeschikbaar: () => null,
@@ -216,7 +215,7 @@ export const semanticScholar: Connector = {
     zoekmogelijkheden: "Trefwoord; citaties", api: "Graph API (api.semanticscholar.org/graph/v1/paper/search)",
     toegangsvoorwaarden: "Zonder sleutel strenge gedeelde limiet; gratis sleutel aan te vragen", licentie: "API-licentievoorwaarden S2", volledigeTekst: "Nee (soms open-access-PDF-link)",
     ...kaartBasis, geschiktheidPilot: "Middel — theologie minder goed gedekt dan exacte wetenschappen",
-    status: "gedeeltelijk", statusToelichting: NIET_LIVE, getest: "Niet live getest.",
+    status: "gedeeltelijk", statusToelichting: "Live getest 01-11-2026 (GitHub Actions, 2 runs, zoekvraag rond Genesis 31/Jakob/Betel): beide runs HTTP 429 zonder sleutel. Preekhulp koelt af en gaat door met andere bronnen.", getest: "01-11-2026 live: 2× HTTP 429.",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "abstract", verificatie: false, netwerk: true },
   nietBeschikbaar: () => null,
@@ -245,7 +244,7 @@ export const core: Connector = {
     zoekmogelijkheden: "Trefwoord; volledige tekst van open-accesspublicaties uit repositories", api: "REST v3 (api.core.ac.uk/v3/search/works), Bearer-sleutel",
     toegangsvoorwaarden: "Gratis API-sleutel na registratie; gebruiksvoorwaarden CORE", licentie: "Per publicatie", volledigeTekst: "Soms (fullText-veld)",
     ...kaartBasis, geschiktheidPilot: "Middel-hoog voor repository-materiaal (o.a. Nederlandse universiteiten)",
-    status: "gedeeltelijk", statusToelichting: "Vereist eigen gratis sleutel. " + NIET_LIVE, getest: "Niet live getest.",
+    status: "gedeeltelijk", statusToelichting: "Vereist eigen gratis sleutel; zonder sleutel niet live getest.", getest: "Niet live getest (geen sleutel).",
   },
   ondersteunt: { zoeken: true, metadata: true, inhoud: "fragmenten", verificatie: false, netwerk: true },
   nietBeschikbaar: () => (geheim("core") ? null : "Geen CORE-sleutel ingesteld (gratis aan te vragen bij core.ac.uk)"),

@@ -18,7 +18,17 @@ export default function Videos() {
   const [vraag, setVraag] = useState("");
   const [vergelijking, setVergelijking] = useState<X | null>(null);
   const [bezig, setBezig] = useState(false);
+  const [link, setLink] = useState("");
+  const [linkInfo, setLinkInfo] = useState<X | null>(null);
+  const [tq, setTq] = useState("");
+  const [tTreffers, setTTreffers] = useState<X[] | null>(null);
+  const [projecten, setProjecten] = useState<{ id: string; titel: string }[]>([]);
+  const [project, setProject] = useState("");
+  const [bewaard, setBewaard] = useState<Record<string, boolean>>({});
 
+  useEffect(() => {
+    fetch("/api/projecten").then((r) => r.json()).then((p) => Array.isArray(p) && setProjecten(p));
+  }, []);
   useEffect(() => {
     fetch("/api/documenten").then((r) => r.json()).then((j) => setTranscripten((j.documenten ?? []).filter((d: X) => d.video_id || d.soort === "srt" || d.soort === "vtt")));
   }, []);
@@ -30,6 +40,24 @@ export default function Videos() {
     const j = await r.json();
     if (!r.ok) return setFout(j.fout);
     setRes(j);
+  }
+  async function controleerLink(e: React.FormEvent) {
+    e.preventDefault();
+    setFout(null);
+    const r = await fetch(`/api/videos/link?url=${encodeURIComponent(link)}`);
+    const j = await r.json();
+    if (!r.ok) return setFout(j.fout);
+    setLinkInfo(j);
+  }
+  async function zoekTranscripten(e: React.FormEvent) {
+    e.preventDefault();
+    const j = await (await fetch(`/api/documenten?q=${encodeURIComponent(tq)}`)).json();
+    setTTreffers((j.treffers ?? []).filter((t: X) => t.video_id));
+  }
+  async function bewaar(bron: string) {
+    if (!project) return setFout("Kies eerst een project om de video in te bewaren.");
+    const r = await fetch("/api/bronnen/markeer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project, bron, markering: "later lezen" }) });
+    if (r.ok) setBewaard({ ...bewaard, [bron]: true });
   }
   async function vergelijk() {
     setBezig(true);
@@ -53,6 +81,19 @@ export default function Videos() {
         <button disabled={q.length < 2}>Zoek video's</button>
       </form>
       {fout && <div className="melding fout">{fout}</div>}
+
+      <form className="kaart rij" onSubmit={controleerLink}>
+        <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Plak een YouTube-link (watch, youtu.be, shorts, live of embed)" style={{ flex: 1 }} />
+        <button disabled={link.length < 5}>Link controleren</button>
+      </form>
+      {linkInfo && <div className="kaart">
+        <p><a href={linkInfo.url} target="_blank" rel="noreferrer"><b>{linkInfo.titel ?? linkInfo.url}</b></a>{linkInfo.kanaal && <> — {linkInfo.kanaal}</>} <span className="zacht-tekst">(video-id {linkInfo.videoId})</span></p>
+        {linkInfo.metaMelding && <p className="zacht-tekst">{linkInfo.metaMelding}</p>}
+        {linkInfo.transcripten.length > 0
+          ? <p>Transcript in je bibliotheek: {linkInfo.transcripten.map((t: X) => <span key={t.id}><b>{t.titel}</b> ({t.transcript_soort ?? "soort onbekend"}) </span>)} — zet deze link in je onderzoeksvraag om het transcript mee te nemen.</p>
+          : <div className="melding">{linkInfo.melding} <Link href="/bibliotheek">Naar Eigen bibliotheek</Link></div>}
+      </div>}
+
       {res && (
         <div className="kaart">
           {!res.beschikbaar && <div className="melding">{res.melding} <a href={res.zoeklink} target="_blank" rel="noreferrer">Zoek direct op YouTube</a></div>}
@@ -62,10 +103,21 @@ export default function Videos() {
               <a href={v.url} target="_blank" rel="noreferrer"><b>{v.titel}</b></a> — {v.auteurs.join(", ")} · {v.datum?.slice(0, 10)}{v.extra?.duurSec ? ` · ${Math.round(v.extra.duurSec / 60)} min` : ""}
               <div className="meta">{v.samenvatting?.slice(0, 300)}</div>
               <span className="label n-niet_geverifieerd">alleen metadata — inhoud niet geverifieerd, geen tijdstippen</span>
+              {v.relevantie && <div className="zacht-tekst">metadata-overeenkomst {Math.round(v.relevantie.score * 100)}% — {v.relevantie.redenen.join("; ")}</div>}
+              <div className="rij" style={{ marginTop: 6 }}>{bewaard[v.id] ? <span className="zacht-tekst">Bewaard in project (later lezen)</span> : <button className="zacht" type="button" onClick={() => bewaar(v.id)}>Bewaar in project</button>}</div>
             </div>
           ))}
         </div>
       )}
+
+      {res?.beschikbaar && <div className="rij"><label style={{ margin: 0 }}>Project om video's in te bewaren:</label><select value={project} onChange={(e) => setProject(e.target.value)} style={{ width: "auto" }}><option value="">— kies project —</option>{projecten.map((p) => <option key={p.id} value={p.id}>{p.titel}</option>)}</select></div>}
+
+      <h2>Zoeken in transcripten</h2>
+      <form className="kaart rij" onSubmit={zoekTranscripten}>
+        <input value={tq} onChange={(e) => setTq(e.target.value)} placeholder="bv. Betel · gelofte · huisgoden" style={{ flex: 1 }} />
+        <button disabled={tq.length < 2}>Zoek</button>
+      </form>
+      {tTreffers && <div className="kaart">{tTreffers.length ? tTreffers.map((t: X, i: number) => <div key={i} className="citaat"><b>{t.titel}</b> — {t.locatie}{t.start_sec != null && <> · <a href={`https://www.youtube.com/watch?v=${t.video_id}&t=${Math.floor(t.start_sec)}s`} target="_blank" rel="noreferrer">open op dit tijdstip</a></>}{"\n"}{t.fragment}</div>) : <p className="zacht-tekst">Geen treffers in transcripten met een YouTube-link.</p>}</div>}
 
       <h2>Preken met transcript vergelijken</h2>
       <div className="kaart">

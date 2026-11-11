@@ -31,6 +31,11 @@ export default function Start() {
     fetch(`/api/raming?modus=${modus}`).then((r) => r.json()).then(setRaming).catch(() => setRaming(null));
   }, [modus]);
   useEffect(() => {
+    // Vervolgvraag uit een dossier (?vraag=…) voorinvullen; de predikant start zelf.
+    const v = new URLSearchParams(window.location.search).get("vraag");
+    if (v) setVraag(v.slice(0, 2000));
+  }, []);
+  useEffect(() => {
     fetch("/api/onderzoek").then((r) => r.json()).then((x) => Array.isArray(x) && setLijst(x));
     fetch("/api/projecten").then((r) => r.json()).then((x) => Array.isArray(x) && setProjecten(x));
   }, []);

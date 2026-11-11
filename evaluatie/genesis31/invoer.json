@@ -1,5 +1,12 @@
 {
-  "toelichting": "Bewust minimale invoer (opdracht §14): alleen Genesis 31:13, het thema, de context van een PKN-doopdienst en de vraag om diepgaande onderzoekslijnen. De preeksamenvatting wordt NIET meegegeven.",
-  "vraag": "Genesis 31:13. Ik bereid een PKN-doopdienst voor met als thema ‘Terug naar de belofte’. Welke diepgaande exegetische en theologische onderzoekslijnen zijn relevant?",
-  "opties": { "bijbelgedeelte": "Genesis 31:13", "thema": "Terug naar de belofte", "dienst": "doopdienst", "traditie": "PKN" }
+  "toelichting": "Blinde Genesis 31-test (opdracht 01-11-2026, §12). Exacte testinvoer; de gehouden preek en de reconstructie worden NIET meegegeven. Dezelfde vraag gaat ongewijzigd naar Preekhulp-Sonnet, Preekhulp-Opus en een rechtstreeks Claude-onderzoek.",
+  "context": "PKN-doopdienst, zondag 1 november 2026",
+  "vraag": "Ik bereid een doopdienst voor vanuit Genesis 31:13 met als thema ‘Terug naar de belofte’. Onderzoek de tekst diepgaand vanuit de oorspronkelijke context, grondtaal, Bijbelcommentaren, wetenschappelijke literatuur en uiteenlopende theologische perspectieven. Zoek naar relevante preken en lezingen. Welke nieuwe inzichten zijn mogelijk, welke aannames moeten worden getoetst en welke verbanden met de doop zijn verantwoord?",
+  "opties": {
+    "bijbelgedeelte": "Genesis 31:13",
+    "thema": "Terug naar de belofte",
+    "dienst": "doopdienst",
+    "traditie": "PKN"
+  },
+  "toelichtingOpties": "Alleen velden die letterlijk uit de testinvoer volgen. Het rechtstreekse Claude-onderzoek krijgt uitsluitend de vraag."
 }

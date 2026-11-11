@@ -19,7 +19,9 @@ a { color: var(--accent); }
 .nav { display: flex; gap: 4px; flex-wrap: wrap; }
 .nav a { text-decoration: none; color: var(--zacht); padding: 6px 10px; border-radius: 8px; font-size: 15px; }
 .nav a:hover { background: var(--accent-zacht); color: var(--tekst); }
-main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; overflow-wrap: break-word; }
+img, svg, canvas, video { max-width: 100%; height: auto; }
+code { overflow-wrap: anywhere; }
 h1 { font-size: 28px; margin: 8px 0 16px; } h2 { font-size: 21px; margin: 28px 0 10px; } h3 { font-size: 17px; margin: 18px 0 8px; }
 .kaart { background: var(--vlak); border: 1px solid var(--lijn); border-radius: var(--radius); padding: 16px; box-shadow: var(--schaduw); }
 .kaart + .kaart { margin-top: 12px; }
@@ -34,10 +36,10 @@ button.gevaar { background: var(--fout-bg); color: var(--fout); }
 button:disabled { opacity: .5; cursor: default; }
 .rij { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .zacht-tekst { color: var(--zacht); font-size: 14px; }
-.melding { padding: 10px 12px; border-radius: 8px; background: var(--waarschuw-bg); color: var(--waarschuw); font-size: 14px; margin: 8px 0; }
+.melding { white-space: pre-line; padding: 10px 12px; border-radius: 8px; background: var(--waarschuw-bg); color: var(--waarschuw); font-size: 14px; margin: 8px 0; }
 .melding.fout { background: var(--fout-bg); color: var(--fout); }
 .melding.info { background: var(--accent-zacht); color: var(--tekst); }
-.label { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.label { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .n-direct_aangetoond { color: var(--n-direct); } .n-onderbouwde_interpretatie { color: var(--n-onderbouwd); } .n-mogelijke_onderzoekslijn { color: var(--n-lijn); }
 .n-omstreden { color: var(--n-omstreden); } .n-niet_geverifieerd { color: var(--n-niet); }
 .bewering { padding: 10px 0; border-bottom: 1px dashed var(--lijn); } .bewering:last-child { border-bottom: 0; }
@@ -51,7 +53,8 @@ th, td { border-bottom: 1px solid var(--lijn); text-align: left; padding: 6px 8p
 .stap { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--vlak); border: 1px solid var(--lijn); }
 .stap.klaar { border-color: var(--n-direct); color: var(--n-direct); } .stap.bezig { border-color: var(--accent); background: var(--accent-zacht); }
 .stap.fout { border-color: var(--fout); color: var(--fout); } .stap.klaar_zonder_ai { border-color: var(--waarschuw); color: var(--waarschuw); }
-.inhoud { display: grid; grid-template-columns: 230px 1fr; gap: 24px; }
+.inhoud { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 24px; }
+.inhoud > * { min-width: 0; }
 .inhoud nav { position: sticky; top: 70px; align-self: start; font-size: 14px; }
 .inhoud nav a { display: block; padding: 3px 0; color: var(--zacht); text-decoration: none; }
 details > summary { cursor: pointer; color: var(--zacht); font-size: 14px; }
@@ -60,7 +63,8 @@ details > summary { cursor: pointer; color: var(--zacht); font-size: 14px; }
 .modus.actief { border-color: var(--accent); outline: 2px solid var(--accent); }
 .modus b { display: block; }
 .citaat { border-left: 3px solid var(--lijn); padding-left: 10px; color: var(--zacht); margin: 6px 0; font-size: 15px; white-space: pre-wrap; }
-.kolommen { columns: 2; column-gap: 24px; } @media (max-width: 800px) { .kolommen { columns: 1; } .inhoud { grid-template-columns: 1fr; } .inhoud nav { position: static; } .modi { grid-template-columns: 1fr; } }
+.kolommen { columns: 2; column-gap: 24px; } @media (max-width: 1024px) { table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; } }
+@media (max-width: 800px) { .kolommen { columns: 1; } .inhoud { grid-template-columns: minmax(0, 1fr); } h1 { font-size: 24px; } .kaart { padding: 12px; } .inhoud nav { position: static; } .modi { grid-template-columns: 1fr; } }
 .voet { max-width: 1180px; margin: 0 auto; padding: 18px 16px 32px; border-top: 1px solid var(--lijn); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--zacht); font-size: 13px; }
 .maker { display: inline-flex; align-items: center; gap: 8px; color: var(--zacht); text-decoration: none; }
 .maker img { height: 22px; width: auto; display: block; }

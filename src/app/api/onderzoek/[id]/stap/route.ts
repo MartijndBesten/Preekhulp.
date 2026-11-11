@@ -10,7 +10,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   return route(req, async () => {
     const { id } = await params;
     const b = await leesJson<{ stap?: string; extra?: string }>(req);
-    if (!b.stap || !"ABCDEFG".includes(b.stap) || b.stap.length !== 1) throw new ApiFout("Onbekende stap");
+    if (!b.stap || !"ABCDEVFG".includes(b.stap) || b.stap.length !== 1) throw new ApiFout("Onbekende stap");
     void herhaalStap(db(), id, b.stap as StapId, tekst(b.extra, 1500) || undefined).catch(() => {});
     return { ok: true };
   });

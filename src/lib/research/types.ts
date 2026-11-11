@@ -28,6 +28,7 @@ export const STAPPEN = [
   { id: "C", naam: "Bronnen verzamelen" },
   { id: "D", naam: "Bronnen beoordelen" },
   { id: "E", naam: "Exegese en vergelijking" },
+  { id: "V", naam: "Verdiepingsronde" },
   { id: "F", naam: "Nieuwe onderzoekslijnen" },
   { id: "G", naam: "Kritische tegenlezing" },
   { id: "H", naam: "Onderzoeksdossier" },
@@ -43,7 +44,10 @@ export const Verwijzing = z.object({
 export const Bewering = z.object({
   tekst: z.string(),
   niveau: z.enum(NIVEAUS),
-  verwijzingen: z.array(Verwijzing),
+  verwijzingen: z.array(Verwijzing).describe("Bewijsstukken die de bewering ondersteunen"),
+  interpretatieve_stap: z.string().nullable().describe("Welke uitlegstap zet je van tekst/bron naar deze bewering? null als het letterlijk in de bron staat"),
+  tegenverwijzingen: z.array(Verwijzing).describe("Bewijsstukken die de bewering mogelijk tegenspreken of nuanceren (leeg als je die niet vond)"),
+  onzekerheid: z.string().nullable().describe("Wat is hier onzeker of omstreden? null als niets"),
 });
 export type BeweringT = z.infer<typeof Bewering>;
 
@@ -108,6 +112,9 @@ export const SchemaAnalyse = z.object({
   tekst_vs_later: z.array(Bewering).describe("Wat de tekst zelf zegt versus later theologisch ontwikkelde uitleg"),
   nieuwe_lijnen: z.array(Lijn),
   open_vragen: z.array(z.string()),
+  verdieping_voorstellen: z
+    .array(z.object({ onderwerp: z.string(), waarom: z.string(), bijbelgedeelten: z.array(z.string()).describe("Verwijzingen zoals 'Genesis 31:19'"), zoektermen: z.array(z.string()) }))
+    .describe("Hooguit 3 onverwachte maar relevante onderwerpen die een tweede, gerichte zoekronde verdienen"),
 });
 export type Analyse = z.infer<typeof SchemaAnalyse>;
 
@@ -131,5 +138,27 @@ export const SchemaTegenlezing = z.object({
     }),
   ),
   zoekvragen_tegenperspectief: z.array(z.string()),
+  steuncontrole: z
+    .array(
+      z.object({
+        bewering: z.string().describe("Id, bv. C7"),
+        oordeel: z.enum(["ondersteunt", "deels", "ondersteunt_niet", "niet_te_beoordelen"]),
+        toelichting: z.string(),
+      }),
+    )
+    .describe("Per AI-bewering: draagt het aangehaalde bewijs deze concrete bewering werkelijk?"),
   eindoordeel: z.string(),
+});
+
+export const SchemaVerdieping = z.object({
+  onderwerpen: z.array(
+    z.object({
+      onderwerp: z.string(),
+      waarom_in_de_tekst: z.array(Bewering),
+      wat_uitleggers_zeggen: z.array(Bewering),
+      samenhang_elders: z.array(Bewering),
+      alternatieve_verklaringen: z.array(Bewering),
+      wat_de_tekst_niet_zegt: z.array(z.string()),
+    }),
+  ),
 });

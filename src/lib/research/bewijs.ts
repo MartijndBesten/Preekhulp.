@@ -21,6 +21,7 @@ export interface BewijsRij {
   jaar: string | null;
   toegang: string;
   rechten: string;
+  naar_ai: number;
 }
 
 export function registreer(d: DatabaseSync, onderzoek: string, record: BronRecord, passage: Passage, herkomst: string): string {
@@ -38,7 +39,7 @@ export function registreer(d: DatabaseSync, onderzoek: string, record: BronRecor
 export function bewijsRijen(d: DatabaseSync, onderzoek: string): BewijsRij[] {
   return d
     .prepare(
-      `SELECT ob.label, ob.passage, ob.herkomst, p.soort, p.locatie, p.tekst, p.url, p.start_sec, b.id AS bron, b.titel AS bron_titel, b.brontype,
+      `SELECT ob.label, ob.passage, ob.herkomst, ob.naar_ai, p.soort, p.locatie, p.tekst, p.url, p.start_sec, b.id AS bron, b.titel AS bron_titel, b.brontype,
               b.connector, b.auteurs, b.jaar, b.toegang, b.rechten
        FROM onderzoek_bewijs ob JOIN passages p ON p.id = ob.passage JOIN bronnen b ON b.id = p.bron
        WHERE ob.onderzoek = ? ORDER BY CAST(substr(ob.label, 2) AS INTEGER)`,
